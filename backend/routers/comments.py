@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Comment, CSCase, Notification, NotificationType
+from models import Comment, CSCase
 from schemas import CommentCreate, CommentRead
+from tasks import notify_comment
 
 router = APIRouter(prefix="/cases/{case_id}/comments", tags=["Comments"])
 
@@ -44,15 +45,8 @@ def create_comment(
     db.commit()
     db.refresh(comment)
 
-    # 댓글 작성 시 담당자에게 알림 (작성자 ≠ 담당자일 때)
+    # 댓글 작성 시 담당자에게 비동기 알림 (Celery)
     if case.assignee_id and case.assignee_id != author_id:
-        notif = Notification(
-            user_id=case.assignee_id,
-            case_id=case.id,
-            message=f"CS Case #{case.id}에 새로운 댓글: {comment.content[:50]}",
-            type=NotificationType.COMMENT,
-        )
-        db.add(notif)
-        db.commit()
+        notify_comment.delay(case_id, author_id, comment.content)
 
     return comment

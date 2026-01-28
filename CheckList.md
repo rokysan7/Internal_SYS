@@ -105,14 +105,14 @@ CS Case 관리 시스템 개발 체크리스트. 위에서부터 순서대로 �
 
 ## Phase 3: Backend 비동기 - Celery + Redis
 
-- [ ] Redis 설치 및 실행 확인
-- [ ] `celery_app.py` 작성 (브로커: Redis)
-- [ ] `tasks.py` 작성
-  - [ ] `check_pending_cases` - 24시간 미처리 CS 리마인드 알림
-  - [ ] `notify_comment` - 댓글 등록 시 담당자 알림
-- [ ] Celery beat 주기 태스크 설정 (1시간마다 미처리 체크)
-- [ ] Comment 라우터에서 `notify_comment.delay()` 호출 연동
-- [ ] Celery worker + beat 정상 동작 확인
+- [x] Redis 설치 및 실행 확인
+- [x] `celery_app.py` 작성 (브로커: Redis)
+- [x] `tasks.py` 작성
+  - [x] `check_pending_cases` - 24시간 미처리 CS 리마인드 알림
+  - [x] `notify_comment` - 댓글 등록 시 담당자 알림
+- [x] Celery beat 주기 태스크 설정 (1시간마다 미처리 체크)
+- [x] Comment 라우터에서 `notify_comment.delay()` 호출 연동
+- [x] Celery worker + beat 정상 동작 확인
 
 ---
 
