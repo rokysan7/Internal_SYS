@@ -3,7 +3,8 @@ Guide_and_Instruction/
 
 # Python                                                                  
 __pycache__/                                                              
-venv/                                                                     
+venv/
+.venv/                                                                     
 *.pyc                                                                     
 .env                                                                      
 

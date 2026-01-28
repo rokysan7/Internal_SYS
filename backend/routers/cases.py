@@ -1,0 +1,127 @@
+"""
+CS Case CRUD 라우터.
+"""
+
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
+from database import get_db
+from models import CaseStatus, CSCase, Notification, NotificationType
+from schemas import CaseCreate, CaseRead, CaseStatusUpdate, CaseSimilarRead, CaseUpdate
+
+router = APIRouter(prefix="/cases", tags=["CS Cases"])
+
+
+@router.get("/similar", response_model=List[CaseSimilarRead])
+def get_similar_cases(
+    query: str = Query(..., description="검색 쿼리 (제목/내용 기반)"),
+    db: Session = Depends(get_db),
+):
+    results = (
+        db.query(CSCase)
+        .filter(
+            or_(
+                CSCase.title.ilike(f"%{query}%"),
+                CSCase.content.ilike(f"%{query}%"),
+            )
+        )
+        .order_by(CSCase.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    return results
+
+
+@router.get("/", response_model=List[CaseRead])
+def list_cases(
+    status: Optional[CaseStatus] = None,
+    assignee_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(CSCase)
+    if status:
+        q = q.filter(CSCase.status == status)
+    if assignee_id:
+        q = q.filter(CSCase.assignee_id == assignee_id)
+    if product_id:
+        q = q.filter(CSCase.product_id == product_id)
+    return q.order_by(CSCase.created_at.desc()).all()
+
+
+@router.post("/", response_model=CaseRead, status_code=201)
+def create_case(data: CaseCreate, db: Session = Depends(get_db)):
+    case = CSCase(**data.model_dump())
+    db.add(case)
+    db.commit()
+    db.refresh(case)
+
+    # 담당자 지정 시 알림 자동 생성
+    if case.assignee_id:
+        notif = Notification(
+            user_id=case.assignee_id,
+            case_id=case.id,
+            message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
+            type=NotificationType.ASSIGNEE,
+        )
+        db.add(notif)
+        db.commit()
+
+    return case
+
+
+@router.get("/{case_id}", response_model=CaseRead)
+def get_case(case_id: int, db: Session = Depends(get_db)):
+    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return case
+
+
+@router.put("/{case_id}", response_model=CaseRead)
+def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
+    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    old_assignee_id = case.assignee_id
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(case, key, value)
+    db.commit()
+    db.refresh(case)
+
+    # 담당자가 변경된 경우 알림 생성
+    if case.assignee_id and case.assignee_id != old_assignee_id:
+        notif = Notification(
+            user_id=case.assignee_id,
+            case_id=case.id,
+            message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
+            type=NotificationType.ASSIGNEE,
+        )
+        db.add(notif)
+        db.commit()
+
+    return case
+
+
+@router.patch("/{case_id}/status", response_model=CaseRead)
+def update_case_status(
+    case_id: int,
+    data: CaseStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    case.status = data.status
+    if data.status == CaseStatus.DONE:
+        case.completed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(case)
+    return case

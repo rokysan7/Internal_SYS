@@ -6,7 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Internal CS (Customer Support) Case Management System built with **React (Frontend)** + **FastAPI/Python (Backend)**. The system manages CS cases, products, licenses, notifications, and work statistics for internal operations.
 
-All design documents and code skeletons are in `Guide_and_Instruction/`.
+## Development Reference
+
+개발 시 반드시 아래 두 소스를 기준으로 작업한다:
+
+1. **`Guide_and_Instruction/`** - ERD, API 명세, SQLAlchemy 모델, FastAPI 라우터 스켈레톤, React 컴포넌트 구조, 알림 시스템 설계 등 전체 설계 문서
+2. **`CheckList.md`** - Phase 0~8 개발 순서 및 체크리스트
+
+새 기능 구현이나 코드 작성 시 Guide 문서의 스켈레톤과 설계를 따르고, CheckList.md의 Phase 순서에 맞춰 진행한다.
+
+**작업 완료 시 반드시 `CheckList.md`의 해당 항목을 `[x]`로 체크한다.** 설정이 변경된 경우 체크리스트 내용도 함께 수정한다.
 
 ## Code Line Limit
 
@@ -35,7 +44,7 @@ backend/
 └── tasks.py             # Async tasks (reminder, comment notification)
 ```
 
-### Frontend (React + Axios + React Router)
+### Frontend (React + Vite + Axios + React Router)
 
 ```
 frontend/src/
@@ -90,6 +99,24 @@ frontend/src/
 | Notifications | `GET /notifications`, `PATCH /notifications/{id}/read` |
 | Statistics | `GET /cases/statistics?by=assignee\|status\|time` |
 
+## Python Environment
+
+**uv**로 가상환경을 관리한다. pip 대신 uv를 사용할 것.
+
+```bash
+# 가상환경 생성
+uv venv
+
+# 활성화
+source .venv/bin/activate
+
+# 패키지 설치
+uv add -r requirements.txt
+
+# 패키지 추가
+uv add <package>
+```
+
 ## Backend Commands
 
 ```bash
@@ -111,10 +138,10 @@ alembic revision --autogenerate -m "description"
 
 ```bash
 # Install dependencies
-npm install
+cd frontend && npm install
 
 # Dev server
-npm start
+npm run dev
 
 # Build
 npm run build

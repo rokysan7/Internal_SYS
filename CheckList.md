@@ -6,100 +6,100 @@ CS Case 관리 시스템 개발 체크리스트. 위에서부터 순서대로 �
 
 ## Phase 0: 프로젝트 초기화
 
-- [ ] Backend 디렉토리 생성 및 Python 가상환경 세팅
-- [ ] `requirements.txt` 작성 (fastapi, uvicorn, sqlalchemy, psycopg2-binary, alembic, celery, redis)
-- [ ] Frontend 디렉토리 생성 (`npx create-react-app frontend` 또는 Vite)
-- [ ] Frontend 의존성 설치 (axios, react-router-dom)
-- [ ] PostgreSQL 데이터베이스 생성
-- [ ] `.gitignore` 작성 (venv, node_modules, __pycache__, .env)
-- [ ] `.env` 파일 생성 (DB URL, Redis URL, Secret Key)
+- [x] Backend 디렉토리 생성 (`backend/`, `backend/routers/`) 및 Python 가상환경 세팅 (uv)
+- [x] `requirements.txt` 작성 (fastapi, uvicorn, sqlalchemy, psycopg2-binary, alembic, celery, redis 등)
+- [x] Frontend 디렉토리 생성 (Vite + React)
+- [x] Frontend 의존성 설치 (axios, react-router-dom)
+- [x] PostgreSQL 데이터베이스 생성 (`cs_dashboard`, owner: seokan)
+- [x] `.gitignore` 작성 (Guide_and_Instruction/, .venv/, node_modules/, __pycache__, .env 등)
+- [x] `.env` 파일 생성 (DATABASE_URL, REDIS_URL, SECRET_KEY)
 
 ---
 
 ## Phase 1: Backend 코어 - DB 모델 및 기본 API
 
 ### 1-1. 데이터베이스 설정
-- [ ] `database.py` 작성 (SessionLocal, engine, get_db)
-- [ ] `models.py` 작성 - SQLAlchemy ORM 모델 전체
-  - [ ] Enum 정의: UserRole(CS/ENGINEER/ADMIN), CaseStatus, Priority, NotificationType
-  - [ ] User 모델
-  - [ ] Product 모델
-  - [ ] License 모델 (FK → Product)
-  - [ ] ProductMemo 모델 (FK → Product, User)
-  - [ ] LicenseMemo 모델 (FK → License, User)
-  - [ ] CSCase 모델 (FK → Product, License, User)
-  - [ ] Comment 모델 (FK → CSCase, User)
-  - [ ] Checklist 모델 (FK → CSCase)
-  - [ ] Notification 모델 (FK → User, CSCase nullable)
-- [ ] Alembic 초기화 및 첫 마이그레이션 실행
-- [ ] 테스트 데이터 시드 스크립트 작성
+- [x] `database.py` 작성 (SessionLocal, engine, get_db)
+- [x] `models.py` 작성 - SQLAlchemy ORM 모델 전체
+  - [x] Enum 정의: UserRole(CS/ENGINEER/ADMIN), CaseStatus, Priority, NotificationType
+  - [x] User 모델
+  - [x] Product 모델
+  - [x] License 모델 (FK → Product)
+  - [x] ProductMemo 모델 (FK → Product, User)
+  - [x] LicenseMemo 모델 (FK → License, User)
+  - [x] CSCase 모델 (FK → Product, License, User)
+  - [x] Comment 모델 (FK → CSCase, User)
+  - [x] Checklist 모델 (FK → CSCase)
+  - [x] Notification 모델 (FK → User, CSCase nullable)
+- [x] Alembic 초기화 및 첫 마이그레이션 실행
+- [x] 테스트 데이터 시드 스크립트 작성
 
 ### 1-2. Pydantic 스키마
-- [ ] `schemas.py` 작성 - 요청/응답 스키마 정의
-  - [ ] User, Product, License 스키마
-  - [ ] ProductMemo, LicenseMemo 스키마
-  - [ ] CSCase 생성/수정/목록 스키마
-  - [ ] Comment, Checklist 스키마
-  - [ ] Notification 스키마
+- [x] `schemas.py` 작성 - 요청/응답 스키마 정의
+  - [x] User, Product, License 스키마
+  - [x] ProductMemo, LicenseMemo 스키마
+  - [x] CSCase 생성/수정/목록 스키마
+  - [x] Comment, Checklist 스키마
+  - [x] Notification 스키마
 
 ### 1-3. CRUD API 라우터
-- [ ] `main.py` - FastAPI 앱 엔트리포인트 + CORS 설정
-- [ ] `routers/products.py` - Product CRUD
-  - [ ] `GET /products` (검색 가능)
-  - [ ] `POST /products`
-  - [ ] `GET /products/{id}`
-  - [ ] `GET /products/{id}/licenses`
-- [ ] `routers/licenses.py` - License CRUD
-  - [ ] `POST /licenses`
-  - [ ] `GET /licenses/{id}`
-- [ ] `routers/memos.py` - Memo CRUD
-  - [ ] `GET /products/{id}/memos`
-  - [ ] `POST /products/{id}/memos`
-  - [ ] `GET /licenses/{id}/memos`
-  - [ ] `POST /licenses/{id}/memos`
-- [ ] `routers/cases.py` - CS Case CRUD
-  - [ ] `GET /cases`
-  - [ ] `POST /cases`
-  - [ ] `GET /cases/{id}`
-  - [ ] `PUT /cases/{id}`
-  - [ ] `PATCH /cases/{id}/status`
-- [ ] `routers/comments.py` - Comment CRUD
-  - [ ] `GET /cases/{id}/comments`
-  - [ ] `POST /cases/{id}/comments`
-- [ ] `routers/checklists.py` - Checklist CRUD
-  - [ ] `GET /cases/{id}/checklists`
-  - [ ] `POST /cases/{id}/checklists`
-  - [ ] `PATCH /checklists/{id}`
-- [ ] Swagger UI (`/docs`)에서 전체 CRUD 동작 확인
+- [x] `main.py` - FastAPI 앱 엔트리포인트 + CORS 설정
+- [x] `routers/products.py` - Product CRUD
+  - [x] `GET /products` (검색 가능)
+  - [x] `POST /products`
+  - [x] `GET /products/{id}`
+  - [x] `GET /products/{id}/licenses`
+- [x] `routers/licenses.py` - License CRUD
+  - [x] `POST /licenses`
+  - [x] `GET /licenses/{id}`
+- [x] `routers/memos.py` - Memo CRUD
+  - [x] `GET /products/{id}/memos`
+  - [x] `POST /products/{id}/memos`
+  - [x] `GET /licenses/{id}/memos`
+  - [x] `POST /licenses/{id}/memos`
+- [x] `routers/cases.py` - CS Case CRUD
+  - [x] `GET /cases`
+  - [x] `POST /cases`
+  - [x] `GET /cases/{id}`
+  - [x] `PUT /cases/{id}`
+  - [x] `PATCH /cases/{id}/status`
+- [x] `routers/comments.py` - Comment CRUD
+  - [x] `GET /cases/{id}/comments`
+  - [x] `POST /cases/{id}/comments`
+- [x] `routers/checklists.py` - Checklist CRUD
+  - [x] `GET /cases/{id}/checklists`
+  - [x] `POST /cases/{id}/checklists`
+  - [x] `PATCH /checklists/{id}`
+- [x] Swagger UI (`/docs`)에서 전체 CRUD 동작 확인
 
 ---
 
 ## Phase 2: Backend 확장 - 인증, 알림, 통계
 
 ### 2-1. 인증
-- [ ] `routers/auth.py` 작성
-  - [ ] `POST /auth/login`
-  - [ ] `GET /auth/me`
-- [ ] JWT 또는 세션 기반 인증 구현
-- [ ] User.role 기반 접근 제어 미들웨어
+- [x] `routers/auth.py` 작성
+  - [x] `POST /auth/login`
+  - [x] `GET /auth/me`
+- [x] JWT 기반 인증 구현 (python-jose + passlib)
+- [x] User.role 기반 접근 제어 미들웨어 (`require_role()` 의존성)
 
 ### 2-2. Notification API
-- [ ] `routers/notifications.py` 작성
-  - [ ] `GET /notifications` (미읽음 필터링 지원)
-  - [ ] `PATCH /notifications/{id}/read`
-- [ ] CS Case 담당자 지정 시 알림 자동 생성
-- [ ] 댓글 작성 시 담당자 알림 자동 생성
+- [x] `routers/notifications.py` 작성
+  - [x] `GET /notifications` (미읽음 필터링 지원)
+  - [x] `PATCH /notifications/{id}/read`
+- [x] CS Case 담당자 지정 시 알림 자동 생성 (`cases.py` create/update)
+- [x] 댓글 작성 시 담당자 알림 자동 생성 (`comments.py` create)
 
 ### 2-3. 통계 API
-- [ ] `routers/statistics.py` 작성
-  - [ ] `GET /cases/statistics?by=assignee` - 담당자별 미처리/완료 건수
-  - [ ] `GET /cases/statistics?by=status` - 상태별 건수
-  - [ ] `GET /cases/statistics?by=time` - 평균 처리 시간
+- [x] `routers/statistics.py` 작성
+  - [x] `GET /cases/statistics?by=assignee` - 담당자별 미처리/완료 건수
+  - [x] `GET /cases/statistics?by=status` - 상태별 건수
+  - [x] `GET /cases/statistics?by=time` - 평균 처리 시간
 
 ### 2-4. 유사 문의 추천
-- [ ] `GET /cases/similar?query=xxx` 구현
-  - [ ] 제목/내용 기반 과거 CS 케이스 검색
-  - [ ] 반환값: `[{id, title, status, assignee_id}]`
+- [x] `GET /cases/similar?query=xxx` 구현
+  - [x] 제목/내용 기반 과거 CS 케이스 검색 (ILIKE)
+  - [x] 반환값: `[{id, title, status, assignee_id}]`
 
 ---
 
