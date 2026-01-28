@@ -119,41 +119,41 @@ CS Case 관리 시스템 개발 체크리스트. 위에서부터 순서대로 �
 ## Phase 4: Frontend 코어 - 기본 페이지 구현
 
 ### 4-1. 프로젝트 구조 세팅
-- [ ] `src/api/` 디렉토리 - Axios API 모듈
-  - [ ] `cases.js` (getCases, getCase, createCase, updateCaseStatus, getSimilarCases)
-  - [ ] `products.js` (getProducts, getProduct, getProductLicenses, createProduct)
-  - [ ] `licenses.js` (getLicense, createLicense, getLicenseMemos)
-  - [ ] `memos.js` (getProductMemos, createProductMemo, getLicenseMemos, createLicenseMemo)
-  - [ ] `notifications.js` (getNotifications, markAsRead)
-- [ ] `API_BASE` 환경변수 설정
+- [x] `src/api/` 디렉토리 - Axios API 모듈
+  - [x] `cases.js` (getCases, getCase, createCase, updateCaseStatus, getSimilarCases)
+  - [x] `products.js` (getProducts, getProduct, getProductLicenses, createProduct)
+  - [x] `licenses.js` (getLicense, createLicense, getLicenseMemos)
+  - [x] `memos.js` (getProductMemos, createProductMemo, getLicenseMemos, createLicenseMemo)
+  - [x] `notifications.js` (getNotifications, markAsRead)
+- [x] `API_BASE` 환경변수 설정
 
 ### 4-2. 라우팅 및 레이아웃
-- [ ] `App.jsx` - React Router 설정
-- [ ] 공통 레이아웃 (네비게이션, 사이드바)
+- [x] `App.jsx` - React Router 설정
+- [x] 공통 레이아웃 (네비게이션, 사이드바)
 
 ### 4-3. 기본 페이지 구현
-- [ ] `pages/Dashboard.jsx` - CS 현황 요약 + 내 담당 CS 목록
-- [ ] `pages/CasePage.jsx` - CS Case 목록/상세/생성
-- [ ] `pages/ProductPage.jsx` - Product 검색 + License 통합 뷰
-- [ ] `pages/LicensePage.jsx` - License 상세 + 메모
+- [x] `pages/Dashboard.jsx` - CS 현황 요약 + 내 담당 CS 목록
+- [x] `pages/CasePage.jsx` - CS Case 목록/상세/생성
+- [x] `pages/ProductPage.jsx` - Product 검색 + License 통합 뷰
+- [x] `pages/LicensePage.jsx` - License 상세 + 메모
 
 ### 4-4. 컴포넌트 구현
-- [ ] `components/CaseList.jsx` - CS Case 목록 표시
-- [ ] `components/CaseDetail.jsx` - CS Case 상세 (댓글, 체크리스트 포함)
-- [ ] `components/CaseForm.jsx` - CS Case 생성 폼
-- [ ] `components/ProductSearch.jsx` - Product 검색
-- [ ] `components/LicenseDetail.jsx` - License 상세 + 메모 표시
-- [ ] `components/MemoList.jsx` - 메모 목록/작성
+- [x] `components/CaseList.jsx` - CS Case 목록 표시
+- [x] `components/CaseDetail.jsx` - CS Case 상세 (댓글, 체크리스트 포함)
+- [x] `components/CaseForm.jsx` - CS Case 생성 폼
+- [x] `components/ProductSearch.jsx` - Product 검색
+- [x] `components/LicenseDetail.jsx` - License 상세 + 메모 표시
+- [x] `components/MemoList.jsx` - 메모 목록/작성
 
 ---
 
 ## Phase 5: Frontend 확장 - 알림, AI 추천, 통계
 
-- [ ] Notification Badge - 미읽음 알림 수 표시 (주기적 fetch)
-- [ ] 알림 목록 UI (읽음/미읽음 구분, 클릭 시 읽음 처리)
-- [ ] CaseForm AI 추천 연결 - 제목 입력 시 `/cases/similar` 호출
-- [ ] 업무 통계 카드 (담당자별 미처리/완료 건수, 평균 처리 시간)
-- [ ] Dashboard 상단에 통계 카드 배치
+- [x] Notification Badge - 미읽음 알림 수 표시 (주기적 fetch)
+- [x] 알림 목록 UI (읽음/미읽음 구분, 클릭 시 읽음 처리)
+- [x] CaseForm AI 추천 연결 - 제목 입력 시 `/cases/similar` 호출
+- [x] 업무 통계 카드 (담당자별 미처리/완료 건수, 평균 처리 시간)
+- [x] Dashboard 상단에 통계 카드 배치
 
 ---
 
