@@ -1,0 +1,22 @@
+# Guide 폴더 제외                                                         
+Guide_and_Instruction/                                                    
+
+# Python                                                                  
+__pycache__/                                                              
+venv/                                                                     
+*.pyc                                                                     
+.env                                                                      
+
+# Node                                                                    
+node_modules/                                                             
+build/                                                                    
+
+# IDE                                                                     
+.vscode/                                                                  
+.idea/                                                                                                                              
+
+# OS
+.DS_Store 
+
+# Claude
+.cluade
