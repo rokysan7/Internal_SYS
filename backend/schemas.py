@@ -26,9 +26,35 @@ class UserCreate(UserBase):
 class UserRead(UserBase):
     id: int
     role: UserRole
+    is_active: bool = True
     created_at: datetime
+    last_login: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+
+
+class UserListResponse(BaseModel):
+    items: List[UserRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class PasswordReset(BaseModel):
+    new_password: str
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
 
 
 # ======================== Product ========================

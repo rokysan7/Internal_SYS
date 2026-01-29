@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: Backend v1.0.1 / Frontend v1.0.1
+> **Version**: Backend v1.0.2 / Frontend v1.0.2
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -11,7 +11,7 @@
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy, Pydantic v2 |
 | **Database** | PostgreSQL |
 | **Async Tasks** | Celery + Redis |
-| **Auth** | JWT (python-jose + passlib/bcrypt) |
+| **Auth** | JWT (python-jose + passlib/bcrypt), Role-based access control |
 | **Frontend** | React 19, Vite, Axios, React Router v7 |
 | **Testing** | pytest, httpx, pytest-cov |
 
@@ -20,7 +20,7 @@
 ```
 ┌─────────────┐     HTTP/JSON     ┌──────────────┐     SQL      ┌────────────┐
 │  React SPA  │ ←───────────────→ │  FastAPI API  │ ←──────────→ │ PostgreSQL │
-│  (Vite)     │   Bearer JWT      │  9 Routers    │              │  8 Tables  │
+│  (Vite)     │   Bearer JWT      │  10 Routers   │              │  8 Tables  │
 └─────────────┘                   └──────┬───────┘              └────────────┘
                                          │ .delay()
                                          ▼
@@ -39,6 +39,26 @@
 - **Comment** — 내부/외부 구분 (`is_internal`)
 - **Checklist** — 케이스별 체크리스트
 - **Notification** — ASSIGNEE / REMINDER / COMMENT 타입
+
+## Authentication & Authorization
+
+### Features
+- **JWT Authentication**: Secure token-based login with Bearer token
+- **Auto Logout**: 60-minute idle timeout (detects mouse, keyboard, scroll, touch)
+- **Role-based Access Control**: CS, ENGINEER, ADMIN roles
+- **Route Protection**: PrivateRoute (login required), AdminRoute (ADMIN only)
+- **401 Interceptor**: Automatic redirect to login on token expiration
+
+### Default Admin Account
+| Email | Password |
+|-------|----------|
+| admin@monoflow.kr | 0000 |
+
+### User Management (ADMIN only)
+- User list with search, role filter, pagination
+- Create/Edit/Deactivate users
+- Password reset
+- Self password change (all authenticated users)
 
 ## Setup
 
@@ -100,6 +120,13 @@ celery -A celery_app beat --loglevel=info       # Beat (주기 태스크)
 |--------|--------|------|-------------|
 | **Auth** | POST | `/auth/login` | JWT 로그인 |
 | | GET | `/auth/me` | 현재 사용자 조회 |
+| | POST | `/auth/change-password` | 비밀번호 변경 (본인) |
+| **Admin** | GET | `/admin/users` | 회원 목록 (검색, 역할 필터, 페이지네이션) |
+| | POST | `/admin/users` | 회원 생성 |
+| | GET | `/admin/users/{id}` | 회원 상세 |
+| | PUT | `/admin/users/{id}` | 회원 수정 |
+| | DELETE | `/admin/users/{id}` | 회원 비활성화 (soft delete) |
+| | POST | `/admin/users/{id}/reset-password` | 비밀번호 재설정 |
 | **Products** | GET | `/products/` | 제품 목록 (검색, 페이지네이션, 정렬) |
 | | POST | `/products/` | 제품 생성 |
 | | POST | `/products/bulk` | CSV 일괄 업로드 (Product + License) |
@@ -153,7 +180,8 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 │   ├── tasks.py                # Async tasks (reminder, comment notify)
 │   ├── seed.py                 # Test data seeder
 │   ├── routers/
-│   │   ├── auth.py             # JWT login/me
+│   │   ├── auth.py             # JWT login/me/change-password
+│   │   ├── admin.py            # User management (ADMIN only)
 │   │   ├── cases.py            # CS Case CRUD + similar search
 │   │   ├── comments.py         # Comments + Celery trigger
 │   │   ├── checklists.py       # Checklist CRUD
@@ -179,17 +207,33 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 └── frontend/
     └── src/
         ├── api/                # Axios API modules
-        ├── components/         # UI 컴포넌트
-        │   ├── Pagination.jsx  # 재사용 페이지네이션
-        │   ├── SortButtons.jsx # 재사용 정렬 버튼
-        │   ├── CaseList, CaseDetail, CaseForm, etc.
-        ├── pages/              # Dashboard, CasePage, ProductPage, LicensePage
-        ├── App.jsx             # Router config
-        └── main.jsx            # Entry point
+        │   ├── client.js       # Axios instance + 401 interceptor
+        │   ├── auth.js         # login, me, changePassword
+        │   └── admin.js        # User management API
+        ├── contexts/
+        │   └── AuthContext.jsx # Auth state + idle timeout
+        ├── hooks/
+        │   └── useIdleTimeout.js # Idle detection hook
+        ├── components/
+        │   ├── PrivateRoute.jsx  # Login required wrapper
+        │   ├── AdminRoute.jsx    # ADMIN role required wrapper
+        │   ├── Layout.jsx        # Sidebar + topbar + user info
+        │   ├── Pagination.jsx, SortButtons.jsx, etc.
+        ├── pages/
+        │   ├── LoginPage.jsx     # Login form
+        │   ├── admin/            # ADMIN only pages
+        │   │   ├── UserListPage.jsx
+        │   │   ├── UserCreatePage.jsx
+        │   │   └── UserEditPage.jsx
+        │   └── Dashboard, CasePage, ProductPage, LicensePage
+        ├── App.jsx             # Router config + route protection
+        └── main.jsx            # Entry point + AuthProvider
 ```
 
 ## Key Features
 
+- **인증 시스템**: JWT 로그인, 60분 비활동 자동 로그아웃, 역할 기반 접근 제어
+- **회원 관리** (ADMIN): 사용자 생성/수정/비활성화, 비밀번호 재설정
 - **케이스 관리**: 생성, 조회, 수정, 상태 변경 (OPEN → IN_PROGRESS → DONE)
 - **제품·라이선스 연동**: 제품별 라이선스 관리 및 메모 축적
 - **CSV 일괄 업로드**: Product + License 대량 등록 (중복 자동 처리)

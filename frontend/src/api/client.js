@@ -15,4 +15,21 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// 401 응답 시 자동 로그아웃
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('access_token');
+
+      // Redirect to login page (avoid redirect loop if already on login)
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default client;

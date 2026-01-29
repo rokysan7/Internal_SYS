@@ -60,6 +60,12 @@
   font-size: 1rem;
 }
 
+.nav-divider {
+  height: 1px;
+  background: #334155;
+  margin: 0.5rem 1rem;
+}
+
 /* ===== Main Wrapper ===== */
 .main-wrapper {
   flex: 1;
@@ -257,9 +263,37 @@
   z-index: 99;
 }
 
-.user-label {
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.user-name {
   font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.user-role {
+  font-size: 0.7rem;
   color: #64748b;
+  text-transform: uppercase;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.logout-btn:hover {
+  background: #fee2e2;
 }
 
 /* ===== Content ===== */

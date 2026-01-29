@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { getNotifications, markAsRead } from '../api/notifications';
 import './Layout.css';
 
@@ -26,6 +27,7 @@ function typeLabel(type) {
 
 export default function Layout() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -98,6 +100,15 @@ export default function Layout() {
             <span className="nav-icon">📦</span>
             Products
           </NavLink>
+          {user?.role === 'ADMIN' && (
+            <>
+              <div className="nav-divider" />
+              <NavLink to="/admin/users">
+                <span className="nav-icon">👥</span>
+                User Management
+              </NavLink>
+            </>
+          )}
         </nav>
       </aside>
 
@@ -170,7 +181,13 @@ export default function Layout() {
                 </>
               )}
             </div>
-            <span className="user-label">사용자</span>
+            <div className="user-info">
+              <span className="user-name">{user?.name || 'User'}</span>
+              <span className="user-role">{user?.role || ''}</span>
+            </div>
+            <button className="logout-btn" onClick={logout} title="Logout">
+              🚪
+            </button>
           </div>
         </header>
         <main className="content">

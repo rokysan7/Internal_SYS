@@ -54,7 +54,9 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.CS, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
 
     assigned_cases = relationship("CSCase", back_populates="assignee")
     notifications = relationship("Notification", back_populates="user")

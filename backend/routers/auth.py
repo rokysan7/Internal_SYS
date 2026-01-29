@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
-from schemas import LoginRequest, TokenResponse, UserRead
+from schemas import LoginRequest, PasswordChange, TokenResponse, UserRead
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -86,3 +86,29 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserRead)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change current user's password."""
+    # Verify current password
+    if not pwd_context.verify(data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    # Validate new password
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters long",
+        )
+
+    # Update password
+    current_user.password_hash = pwd_context.hash(data.new_password)
+    db.commit()
