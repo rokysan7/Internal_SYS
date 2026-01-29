@@ -1,5 +1,7 @@
 # CS Case Management Dashboard
 
+> **Version**: Backend v1.0.1 / Frontend v1.0.1
+
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
 ## Tech Stack
@@ -98,8 +100,9 @@ celery -A celery_app beat --loglevel=info       # Beat (주기 태스크)
 |--------|--------|------|-------------|
 | **Auth** | POST | `/auth/login` | JWT 로그인 |
 | | GET | `/auth/me` | 현재 사용자 조회 |
-| **Products** | GET | `/products/` | 제품 목록 (검색 지원) |
+| **Products** | GET | `/products/` | 제품 목록 (검색, 페이지네이션, 정렬) |
 | | POST | `/products/` | 제품 생성 |
+| | POST | `/products/bulk` | CSV 일괄 업로드 (Product + License) |
 | | GET | `/products/{id}` | 제품 상세 |
 | | GET | `/products/{id}/licenses` | 제품별 라이선스 목록 |
 | **Licenses** | POST | `/licenses/` | 라이선스 생성 |
@@ -176,7 +179,10 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 └── frontend/
     └── src/
         ├── api/                # Axios API modules
-        ├── components/         # CaseList, CaseDetail, CaseForm, etc.
+        ├── components/         # UI 컴포넌트
+        │   ├── Pagination.jsx  # 재사용 페이지네이션
+        │   ├── SortButtons.jsx # 재사용 정렬 버튼
+        │   ├── CaseList, CaseDetail, CaseForm, etc.
         ├── pages/              # Dashboard, CasePage, ProductPage, LicensePage
         ├── App.jsx             # Router config
         └── main.jsx            # Entry point
@@ -186,6 +192,8 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 
 - **케이스 관리**: 생성, 조회, 수정, 상태 변경 (OPEN → IN_PROGRESS → DONE)
 - **제품·라이선스 연동**: 제품별 라이선스 관리 및 메모 축적
+- **CSV 일괄 업로드**: Product + License 대량 등록 (중복 자동 처리)
+- **페이지네이션 & 정렬**: 제품 목록 25개 단위 페이징, 이름/날짜순 정렬
 - **댓글 & 체크리스트**: 내부/외부 댓글, 케이스별 체크리스트
 - **알림 시스템**: 담당자 배정, 댓글, 24시간 미처리 리마인드 (Celery 비동기)
 - **AI 유사 케이스 추천**: 제목/내용 기반 과거 케이스 검색
