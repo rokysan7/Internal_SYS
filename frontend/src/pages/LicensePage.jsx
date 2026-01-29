@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import LicenseDetail from '../components/LicenseDetail';
-import './pages.css';
+import './shared.css';
+import './LicensePage.css';
 
 export default function LicensePage() {
   const { id } = useParams();

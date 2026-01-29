@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getProducts } from '../api/products';
 import Pagination from './Pagination';
 import SortButtons from './SortButtons';
+import usePagination from '../hooks/usePagination';
 
 const SORT_OPTIONS = [
   { key: 'name', label: '이름' },
@@ -21,10 +22,8 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // 페이지네이션 상태
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  // 페이지네이션 상태 (커스텀 훅 사용)
+  const { page, totalPages, total, setPage, updateFromResponse, resetPage } = usePagination();
 
   // 정렬 상태
   const [sort, setSort] = useState('name');
@@ -36,19 +35,18 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
       getProducts({ search: search || undefined, page, pageSize: PAGE_SIZE, sort, order })
         .then((res) => {
           setProducts(res.data.items);
-          setTotalPages(res.data.total_pages);
-          setTotal(res.data.total);
+          updateFromResponse(res.data);
         })
         .catch((err) => console.error('Product fetch failed:', err))
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, page, sort, order, refreshKey]);
+  }, [search, page, sort, order, refreshKey, updateFromResponse]);
 
   // 검색어/정렬 변경 시 페이지 초기화
   useEffect(() => {
-    setPage(1);
-  }, [search, sort, order]);
+    resetPage();
+  }, [search, sort, order, resetPage]);
 
   const handleSortChange = (newSort, newOrder) => {
     setSort(newSort);

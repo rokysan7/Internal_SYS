@@ -4,7 +4,8 @@ import { getCases } from '../api/cases';
 import CaseList from '../components/CaseList';
 import CaseDetail from '../components/CaseDetail';
 import CaseForm from '../components/CaseForm';
-import './pages.css';
+import './shared.css';
+import './CasePage.css';
 
 export default function CasePage() {
   const { id } = useParams();

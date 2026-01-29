@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getCases, getStatistics } from '../api/cases';
 import CaseList from '../components/CaseList';
-import './pages.css';
+import './shared.css';
+import './Dashboard.css';
 
 export default function Dashboard() {
   const [cases, setCases] = useState([]);

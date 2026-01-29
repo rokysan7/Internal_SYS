@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createCase, getSimilarCases } from '../api/cases';
 import { getProducts, getProductLicenses } from '../api/products';
+import useDebounce from '../hooks/useDebounce';
 
 /**
  * CS Case 생성 폼.
@@ -21,7 +22,7 @@ export default function CaseForm() {
   // AI 추천 상태
   const [similarCases, setSimilarCases] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
-  const debounceRef = useRef(null);
+  const debouncedTitle = useDebounce(form.title, 500);
 
   useEffect(() => {
     getProducts().then((res) => setProducts(res.data)).catch(() => {});
@@ -38,31 +39,19 @@ export default function CaseForm() {
     }
   }, [form.product_id]);
 
-  // 제목 변경 시 유사 케이스 검색 (debounce 500ms)
+  // 제목 변경 시 유사 케이스 검색 (debounced)
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (form.title.trim().length <= 3) {
+    if (debouncedTitle.trim().length <= 3) {
       setSimilarCases([]);
       return;
     }
 
     setSimilarLoading(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await getSimilarCases(form.title.trim());
-        setSimilarCases(res.data);
-      } catch {
-        setSimilarCases([]);
-      } finally {
-        setSimilarLoading(false);
-      }
-    }, 500);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [form.title]);
+    getSimilarCases(debouncedTitle.trim())
+      .then((res) => setSimilarCases(res.data))
+      .catch(() => setSimilarCases([]))
+      .finally(() => setSimilarLoading(false));
+  }, [debouncedTitle]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

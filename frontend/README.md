@@ -1,16 +1,50 @@
-# React + Vite
+# CS Dashboard Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Internal CS (Customer Support) Case Management System - Frontend
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19 + Vite
+- React Router DOM
+- Axios
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev      # Development server
+npm run build    # Production build
+```
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+src/
+├── api/              # API modules (cases, products, licenses, memos)
+├── components/       # Reusable UI components
+│   ├── CaseDetail/   # Case detail sub-components
+│   └── index.js      # Barrel exports
+├── hooks/            # Custom React hooks
+│   └── index.js      # Barrel exports
+├── pages/            # Page components
+│   ├── shared.css    # Shared styles
+│   └── [Page].css    # Page-specific styles
+├── App.jsx
+└── main.jsx
+```
+
+## Changelog
+
+### v1.0.2 (2026-01-29)
+
+**Frontend Refactoring** - Improved modularity and reusability
+
+- **CaseDetail**: Split into 5 sub-components (DescriptionCard, CommentsCard, InfoCard, ChecklistCard)
+- **ProductPage**: Extracted ProductCreateForm, BulkUploadForm components
+- **CSS**: Split pages.css into shared.css + page-specific CSS files
+- **Hooks**: Added custom hooks (useDebounce, usePagination, useFetch)
+- **Barrel Exports**: Added index.js for components and hooks
+
+### v1.0.1
+
+- Initial release with core features
