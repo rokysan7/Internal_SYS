@@ -1,8 +1,16 @@
 import client from './client';
 
-/** Product 목록 조회 (검색 지원) */
-export const getProducts = (search) =>
-  client.get('/products', { params: search ? { search } : {} });
+/** Product 목록 조회 (검색, 페이지네이션, 정렬 지원) */
+export const getProducts = ({ search, page = 1, pageSize = 25, sort = 'name', order = 'asc' } = {}) =>
+  client.get('/products', {
+    params: {
+      ...(search && { search }),
+      page,
+      page_size: pageSize,
+      sort,
+      order,
+    },
+  });
 
 /** Product 단건 조회 */
 export const getProduct = (id) =>
@@ -20,7 +28,5 @@ export const getProductLicenses = (productId) =>
 export const bulkUploadProducts = (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  return client.post('/products/bulk', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  return client.post('/products/bulk', formData);
 };

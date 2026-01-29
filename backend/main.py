@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import auth, cases, checklists, comments, licenses, memos, notifications, products, statistics
 
-app = FastAPI(title="CS Dashboard API", version="1.0.0")
+app = FastAPI(title="CS Dashboard API", version="1.0.1")
 
 # CORS 설정
 app.add_middleware(

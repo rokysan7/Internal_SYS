@@ -35,5 +35,10 @@ lerna-debug.log*
 # OS
 .DS_Store
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Claude
 .claude

@@ -484,3 +484,94 @@
 .assignee-stats-table .count-open { color: #1d4ed8; }
 .assignee-stats-table .count-progress { color: #b45309; }
 .assignee-stats-table .count-done { color: #15803d; }
+
+/* ===== Pagination ===== */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.8rem;
+  color: #64748b;
+  min-width: 70px;
+  text-align: center;
+}
+
+/* ===== Sort Buttons ===== */
+.sort-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sort-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sort-btn.active {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.sort-arrow {
+  font-size: 0.7rem;
+}
+
+/* List Header (Total + Sort) */
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.list-header .total-count {
+  color: #64748b;
+}

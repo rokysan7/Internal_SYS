@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
 import { getProducts } from '../api/products';
+import Pagination from './Pagination';
+import SortButtons from './SortButtons';
+
+const SORT_OPTIONS = [
+  { key: 'name', label: '이름' },
+  { key: 'created_at', label: '날짜' },
+];
+
+const PAGE_SIZE = 25;
 
 /**
- * Product 검색 + 선택 리스트.
+ * Product 검색 + 선택 리스트 (페이지네이션 & 정렬 지원).
  * @param {function} onSelect - 선택 콜백 (product object)
  * @param {number|null} selectedId - 현재 선택된 product id
  * @param {number} refreshKey - 변경 시 목록 재조회 트리거
@@ -12,19 +21,43 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // 페이지네이션 상태
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  // 정렬 상태
+  const [sort, setSort] = useState('name');
+  const [order, setOrder] = useState('asc');
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(true);
-      getProducts(search || undefined)
-        .then((res) => setProducts(res.data))
+      getProducts({ search: search || undefined, page, pageSize: PAGE_SIZE, sort, order })
+        .then((res) => {
+          setProducts(res.data.items);
+          setTotalPages(res.data.total_pages);
+          setTotal(res.data.total);
+        })
         .catch((err) => console.error('Product fetch failed:', err))
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, refreshKey]);
+  }, [search, page, sort, order, refreshKey]);
+
+  // 검색어/정렬 변경 시 페이지 초기화
+  useEffect(() => {
+    setPage(1);
+  }, [search, sort, order]);
+
+  const handleSortChange = (newSort, newOrder) => {
+    setSort(newSort);
+    setOrder(newOrder);
+  };
 
   return (
     <div>
+      {/* 검색창 */}
       <div className="search-box">
         <span className="search-icon">🔍</span>
         <input
@@ -35,6 +68,18 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
         />
       </div>
 
+      {/* 정렬 & 총 개수 */}
+      <div className="list-header">
+        <span className="total-count">Total: {total}</span>
+        <SortButtons
+          options={SORT_OPTIONS}
+          currentSort={sort}
+          currentOrder={order}
+          onSortChange={handleSortChange}
+        />
+      </div>
+
+      {/* 제품 리스트 */}
       <div className="card" style={{ padding: 0 }}>
         {loading ? (
           <div className="loading">Loading...</div>
@@ -67,6 +112,14 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
           ))
         )}
       </div>
+
+      {/* 페이지네이션 */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        disabled={loading}
+      />
     </div>
   );
 }

@@ -51,6 +51,15 @@ class ProductRead(ProductBase):
     model_config = {"from_attributes": True}
 
 
+class ProductListResponse(BaseModel):
+    """Product 목록 페이지네이션 응답"""
+    items: List[ProductRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 # ======================== License ========================
 
 
