@@ -5,8 +5,9 @@ import { getProducts } from '../api/products';
  * Product 검색 + 선택 리스트.
  * @param {function} onSelect - 선택 콜백 (product object)
  * @param {number|null} selectedId - 현재 선택된 product id
+ * @param {number} refreshKey - 변경 시 목록 재조회 트리거
  */
-export default function ProductSearch({ onSelect, selectedId }) {
+export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,7 @@ export default function ProductSearch({ onSelect, selectedId }) {
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, refreshKey]);
 
   return (
     <div>

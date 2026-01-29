@@ -253,3 +253,14 @@ class StatByStatus(BaseModel):
 class StatByTime(BaseModel):
     avg_hours: Optional[float] = None
     total_completed: int
+
+
+# ======================== Bulk Upload ========================
+
+
+class BulkUploadResult(BaseModel):
+    products_created: int
+    products_existing: int
+    licenses_created: int
+    licenses_existing: int
+    errors: List[str] = []

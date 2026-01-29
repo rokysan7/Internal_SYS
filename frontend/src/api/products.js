@@ -15,3 +15,12 @@ export const createProduct = (data) =>
 /** Product에 속한 License 목록 조회 */
 export const getProductLicenses = (productId) =>
   client.get(`/products/${productId}/licenses`);
+
+/** CSV 파일로 Product + License 일괄 등록 */
+export const bulkUploadProducts = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return client.post('/products/bulk', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
