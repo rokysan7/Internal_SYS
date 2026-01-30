@@ -58,11 +58,17 @@ export default function CaseDetail({ caseId }) {
     }
   };
 
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+  const handleAddComment = async (content, parentId = null) => {
+    if (!content.trim()) return;
     try {
-      const res = await createComment(caseId, { content: newComment, is_internal: false });
-      setComments((prev) => [...prev, res.data]);
+      await createComment(caseId, {
+        content,
+        is_internal: false,
+        parent_id: parentId,
+      });
+      // Refresh comments to get updated tree structure
+      const commentsRes = await getComments(caseId);
+      setComments(commentsRes.data);
       setNewComment('');
     } catch (err) {
       console.error('Comment creation failed:', err);

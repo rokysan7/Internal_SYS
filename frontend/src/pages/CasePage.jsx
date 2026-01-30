@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { getCases } from '../api/cases';
 import CaseList from '../components/CaseList';
 import CaseDetail from '../components/CaseDetail';
 import CaseForm from '../components/CaseForm';
+import Pagination from '../components/Pagination';
 import './shared.css';
 import './CasePage.css';
 
@@ -20,19 +21,26 @@ export default function CasePage() {
 /* ========== Case List View (page-level filter logic) ========== */
 function CaseListView() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
+  const [totalPages, setTotalPages] = useState(1);
+
+  // URL query params
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const statusFilter = searchParams.get('status') || '';
+  const priorityFilter = searchParams.get('priority') || '';
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchCases() {
       try {
-        const params = {};
+        const params = { page, page_size: 20 };
         if (statusFilter) params.status = statusFilter;
         const res = await getCases(params);
-        setCases(res.data);
+        setCases(res.data.items);
+        setTotalPages(res.data.total_pages);
       } catch (err) {
         console.error('Failed to load cases:', err);
       } finally {
@@ -41,8 +49,30 @@ function CaseListView() {
     }
     setLoading(true);
     fetchCases();
-  }, [statusFilter]);
+  }, [page, statusFilter]);
 
+  const updateParams = (updates) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) newParams.set(key, value);
+      else newParams.delete(key);
+    });
+    setSearchParams(newParams);
+  };
+
+  const handlePageChange = (newPage) => {
+    updateParams({ page: newPage.toString() });
+  };
+
+  const handleStatusChange = (e) => {
+    updateParams({ status: e.target.value, page: '1' });
+  };
+
+  const handlePriorityChange = (e) => {
+    updateParams({ priority: e.target.value, page: '1' });
+  };
+
+  // Client-side filtering for priority and search (backend only filters status)
   const filtered = cases.filter((c) => {
     if (priorityFilter && c.priority !== priorityFilter) return false;
     if (searchTerm && !c.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -67,13 +97,13 @@ function CaseListView() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select value={statusFilter} onChange={handleStatusChange}>
           <option value="">All Status</option>
           <option value="OPEN">Open</option>
           <option value="IN_PROGRESS">In Progress</option>
           <option value="DONE">Done</option>
         </select>
-        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+        <select value={priorityFilter} onChange={handlePriorityChange}>
           <option value="">All Priority</option>
           <option value="HIGH">High</option>
           <option value="MEDIUM">Medium</option>
@@ -82,6 +112,13 @@ function CaseListView() {
       </div>
 
       <CaseList cases={filtered} />
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        disabled={loading}
+      />
     </div>
   );
 }

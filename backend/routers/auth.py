@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas import LoginRequest, PasswordChange, TokenResponse, UserRead
+from typing import List
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -112,3 +113,13 @@ def change_password(
     # Update password
     current_user.password_hash = pwd_context.hash(data.new_password)
     db.commit()
+
+
+@router.get("/users/assignees", response_model=List[UserRead])
+def get_assignees(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Get list of active users who can be assigned to cases."""
+    users = db.query(User).filter(User.is_active == True).order_by(User.name).all()
+    return users

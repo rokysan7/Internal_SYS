@@ -27,8 +27,8 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="cases" element={<CasePage />} />
-        <Route path="cases/:id" element={<CasePage />} />
         <Route path="cases/new" element={<CasePage />} />
+        <Route path="cases/:id" element={<CasePage />} />
         <Route path="products" element={<ProductPage />} />
         <Route path="licenses/:id" element={<LicensePage />} />
 

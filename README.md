@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: Backend v1.0.2 / Frontend v1.0.2
+> **Version**: Backend v1.0.3 / Frontend v1.0.3
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -36,7 +36,7 @@
 - **Product** → has many **License**
 - **ProductMemo** / **LicenseMemo** — 제품·라이선스별 지식 축적
 - **CSCase** → belongs to Product, License, User(assignee)
-- **Comment** — 내부/외부 구분 (`is_internal`)
+- **Comment** — 내부/외부 구분 (`is_internal`), 중첩 답글 지원 (`parent_id`)
 - **Checklist** — 케이스별 체크리스트
 - **Notification** — ASSIGNEE / REMINDER / COMMENT 타입
 
@@ -238,8 +238,8 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 - **제품·라이선스 연동**: 제품별 라이선스 관리 및 메모 축적
 - **CSV 일괄 업로드**: Product + License 대량 등록 (중복 자동 처리)
 - **페이지네이션 & 정렬**: 제품 목록 25개 단위 페이징, 이름/날짜순 정렬
-- **댓글 & 체크리스트**: 내부/외부 댓글, 케이스별 체크리스트
-- **알림 시스템**: 담당자 배정, 댓글, 24시간 미처리 리마인드 (Celery 비동기)
+- **댓글 & 체크리스트**: 내부/외부 댓글, 중첩 답글 지원, 케이스별 체크리스트
+- **알림 시스템**: 담당자 배정, 댓글/답글 알림, 24시간 미처리 리마인드
 - **AI 유사 케이스 추천**: 제목/내용 기반 과거 케이스 검색
 - **업무 통계**: 담당자별/상태별 케이스 현황, 평균 처리 시간
 - **30초 폴링 알림 Badge**: 실시간에 준하는 미읽음 알림 표시

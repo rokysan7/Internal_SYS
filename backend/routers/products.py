@@ -153,6 +153,12 @@ async def bulk_upload_products(
     )
 
 
+@router.get("/all", response_model=List[ProductRead])
+def list_all_products(db: Session = Depends(get_db)):
+    """Get all products without pagination (for dropdowns)."""
+    return db.query(Product).order_by(Product.name).all()
+
+
 @router.get("/{product_id}", response_model=ProductRead)
 def get_product(product_id: int, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()

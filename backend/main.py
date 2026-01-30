@@ -7,12 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import admin, auth, cases, checklists, comments, licenses, memos, notifications, products, statistics
 
-app = FastAPI(title="CS Dashboard API", version="1.0.1")
+app = FastAPI(title="CS Dashboard API", version="1.0.3")
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],  # 모든 origin 허용 (내부망 사용)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

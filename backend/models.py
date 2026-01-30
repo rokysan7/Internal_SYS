@@ -147,12 +147,15 @@ class Comment(Base):
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cs_cases.id"), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
     content = Column(Text, nullable=False)
     is_internal = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     case = relationship("CSCase", back_populates="comments")
     author = relationship("User")
+    parent = relationship("Comment", remote_side=[id], back_populates="replies")
+    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
 
 
 class Checklist(Base):

@@ -24,6 +24,10 @@ export const createProduct = (data) =>
 export const getProductLicenses = (productId) =>
   client.get(`/products/${productId}/licenses`);
 
+/** Get all products without pagination (for dropdowns) */
+export const getAllProducts = () =>
+  client.get('/products/all');
+
 /** CSV 파일로 Product + License 일괄 등록 */
 export const bulkUploadProducts = (file) => {
   const formData = new FormData();

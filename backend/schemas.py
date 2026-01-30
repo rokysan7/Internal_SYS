@@ -197,6 +197,15 @@ class CaseSimilarRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CaseListResponse(BaseModel):
+    """Case list with pagination"""
+    items: List[CaseRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 # ======================== Comment ========================
 
 
@@ -206,13 +215,24 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    pass
+    parent_id: Optional[int] = None
+
+
+class CommentAuthor(BaseModel):
+    """Minimal author info for comment display."""
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
 
 
 class CommentRead(CommentBase):
     id: int
     case_id: int
     author_id: int
+    parent_id: Optional[int] = None
+    author: Optional[CommentAuthor] = None
+    replies: list["CommentRead"] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}

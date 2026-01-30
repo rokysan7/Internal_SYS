@@ -33,13 +33,14 @@ export default function Layout() {
   const wrapperRef = useRef(null);
 
   const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const res = await getNotifications({ unread_only: false });
+      const res = await getNotifications({ user_id: user.id, unread_only: false });
       setNotifications(res.data);
     } catch {
       // 실패 시 무시 — 백그라운드 폴링이므로
     }
-  }, []);
+  }, [user?.id]);
 
   // 초기 로드 + 주기적 폴링
   useEffect(() => {

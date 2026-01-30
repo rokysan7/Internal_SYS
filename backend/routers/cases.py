@@ -10,8 +10,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import CaseStatus, CSCase, Notification, NotificationType
-from schemas import CaseCreate, CaseRead, CaseStatusUpdate, CaseSimilarRead, CaseUpdate
+from models import CaseStatus, CSCase, Notification, NotificationType, User, UserRole
+from routers.auth import get_current_user
+from math import ceil
+from schemas import CaseCreate, CaseRead, CaseListResponse, CaseStatusUpdate, CaseSimilarRead, CaseUpdate
 
 router = APIRouter(prefix="/cases", tags=["CS Cases"])
 
@@ -36,8 +38,10 @@ def get_similar_cases(
     return results
 
 
-@router.get("/", response_model=List[CaseRead])
+@router.get("/", response_model=CaseListResponse)
 def list_cases(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     status: Optional[CaseStatus] = None,
     assignee_id: Optional[int] = None,
     product_id: Optional[int] = None,
@@ -50,7 +54,19 @@ def list_cases(
         q = q.filter(CSCase.assignee_id == assignee_id)
     if product_id:
         q = q.filter(CSCase.product_id == product_id)
-    return q.order_by(CSCase.created_at.desc()).all()
+
+    total = q.count()
+    total_pages = ceil(total / page_size) if total > 0 else 1
+    offset = (page - 1) * page_size
+    items = q.order_by(CSCase.created_at.desc()).offset(offset).limit(page_size).all()
+
+    return CaseListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.post("/", response_model=CaseRead, status_code=201)
@@ -114,10 +130,18 @@ def update_case_status(
     case_id: int,
     data: CaseStatusUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """Update case status. Only assignee or ADMIN can change status."""
     case = db.query(CSCase).filter(CSCase.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+
+    # Permission check
+    is_assignee = case.assignee_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_assignee or is_admin):
+        raise HTTPException(status_code=403, detail="Permission denied")
 
     case.status = data.status
     if data.status == CaseStatus.DONE:
@@ -125,3 +149,24 @@ def update_case_status(
     db.commit()
     db.refresh(case)
     return case
+
+
+@router.delete("/{case_id}", status_code=204)
+def delete_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a case. Only assignee or ADMIN can delete."""
+    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # Permission check: assignee or ADMIN
+    is_assignee = case.assignee_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_assignee or is_admin):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    db.delete(case)
+    db.commit()
