@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   getCase,
+  deleteCase,
   updateCaseStatus,
   getComments,
   createComment,
@@ -9,6 +10,7 @@ import {
   createChecklist,
   updateChecklist,
 } from '../../api/cases';
+import { useAuth } from '../../contexts/AuthContext';
 import { statusBadgeClass, statusLabel } from '../utils';
 
 import DescriptionCard from './DescriptionCard';
@@ -22,12 +24,15 @@ import ChecklistCard from './ChecklistCard';
  * @param {string|number} props.caseId - Case ID
  */
 export default function CaseDetail({ caseId }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [caseData, setCaseData] = useState(null);
   const [comments, setComments] = useState([]);
   const [checklists, setChecklists] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [newCheckItem, setNewCheckItem] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchAll() {
@@ -48,6 +53,20 @@ export default function CaseDetail({ caseId }) {
     }
     fetchAll();
   }, [caseId]);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this case?')) return;
+    setDeleting(true);
+    try {
+      await deleteCase(caseId);
+      navigate('/cases');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert(err.response?.data?.detail || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus) => {
     try {
@@ -105,10 +124,21 @@ export default function CaseDetail({ caseId }) {
       <Link to="/cases" className="back-link">← Back to Cases</Link>
 
       <div className="page-header">
-        <h1>{caseData.title}</h1>
-        <span className={`badge ${statusBadgeClass(caseData.status)}`}>
-          {statusLabel(caseData.status)}
-        </span>
+        <div>
+          <h1>{caseData.title}</h1>
+          <span className={`badge ${statusBadgeClass(caseData.status)}`}>
+            {statusLabel(caseData.status)}
+          </span>
+        </div>
+        {(user?.role === 'ADMIN' || user?.id === caseData.assignee_id) && (
+          <button
+            className="btn btn-danger"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete Case'}
+          </button>
+        )}
       </div>
 
       <div className="detail-grid">
