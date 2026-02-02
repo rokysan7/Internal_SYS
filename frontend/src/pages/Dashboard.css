@@ -39,6 +39,17 @@
 .stat-card.accent-green { border-top: 3px solid #4ade80; }
 .stat-card.accent-red { border-top: 3px solid #f87171; }
 
+/* Clickable Cards */
+.stat-card.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 /* Assignee Stats Table */
 .assignee-stats-table {
   width: 100%;

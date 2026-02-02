@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: Backend v1.0.4 / Frontend v1.0.5
+> **Version**: Backend v1.0.5 / Frontend v1.0.6
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -250,6 +250,7 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 - **알림 시스템**: 담당자 배정, 댓글/답글 알림, 24시간 미처리 리마인드
 - **AI 유사 케이스 추천**: 제목/내용 기반 과거 케이스 검색
 - **업무 통계**: 담당자별/상태별 케이스 현황, 평균 처리 시간
+- **Dashboard 카드 클릭**: 상태별 케이스 필터링 (Total/Open/In Progress/Done → 해당 상태만 시간순 조회)
 - **30초 폴링 알림 Badge**: 실시간에 준하는 미읽음 알림 표시
 
 ## License

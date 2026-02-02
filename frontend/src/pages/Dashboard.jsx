@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCases, getStatistics } from '../api/cases';
 import CaseList from '../components/CaseList';
 import './shared.css';
 import './Dashboard.css';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [cases, setCases] = useState([]);
   const [statusStats, setStatusStats] = useState([]);
   const [timeStats, setTimeStats] = useState(null);
@@ -20,7 +22,7 @@ export default function Dashboard() {
           getStatistics('time'),
           getStatistics('assignee'),
         ]);
-        setCases(casesRes.data);
+        setCases(casesRes.data.items || []);
         setStatusStats(statusRes.data);
         setTimeStats(timeRes.data);
         setAssigneeStats(assigneeRes.data);
@@ -53,21 +55,21 @@ export default function Dashboard() {
         <h1>Dashboard</h1>
       </div>
 
-      {/* Status Summary Cards */}
+      {/* Status Summary Cards - Clickable */}
       <div className="card-grid">
-        <div className="stat-card accent-blue">
+        <div className="stat-card accent-blue clickable" onClick={() => navigate('/cases')}>
           <span className="stat-label">Total Cases</span>
           <span className="stat-value">{totalCases}</span>
         </div>
-        <div className="stat-card accent-yellow">
+        <div className="stat-card accent-yellow clickable" onClick={() => navigate('/cases?status=OPEN')}>
           <span className="stat-label">Open</span>
           <span className="stat-value">{countByStatus('OPEN')}</span>
         </div>
-        <div className="stat-card accent-orange">
+        <div className="stat-card accent-orange clickable" onClick={() => navigate('/cases?status=IN_PROGRESS')}>
           <span className="stat-label">In Progress</span>
           <span className="stat-value">{countByStatus('IN_PROGRESS')}</span>
         </div>
-        <div className="stat-card accent-green">
+        <div className="stat-card accent-green clickable" onClick={() => navigate('/cases?status=DONE')}>
           <span className="stat-label">Done</span>
           <span className="stat-value">{countByStatus('DONE')}</span>
         </div>
