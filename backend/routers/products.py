@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import License, Product
-from schemas import BulkUploadResult, LicenseRead, ProductCreate, ProductListResponse, ProductRead
+from models import CSCase, License, Product, ProductMemo, User, UserRole
+from routers.auth import get_current_user
+from schemas import BulkUploadResult, LicenseRead, ProductCreate, ProductListResponse, ProductRead, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -167,6 +168,27 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     return product
 
 
+@router.put("/{product_id}", response_model=ProductRead)
+def update_product(
+    product_id: int,
+    data: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update product. ADMIN only."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="ADMIN only")
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(product, key, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
 @router.get("/{product_id}/licenses", response_model=List[LicenseRead])
 def get_product_licenses(product_id: int, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -178,3 +200,33 @@ def get_product_licenses(product_id: int, db: Session = Depends(get_db)):
         .order_by(License.created_at.desc())
         .all()
     )
+
+
+@router.delete("/{product_id}", status_code=204)
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a product. ADMIN only. Cannot delete if linked to CS Cases."""
+    # ADMIN only
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="ADMIN only")
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # Check if product is linked to any CS Case
+    linked_cases = db.query(CSCase).filter(CSCase.product_id == product_id).count()
+    if linked_cases > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: {linked_cases} CS Case(s) are linked to this product",
+        )
+
+    # Delete related data (licenses, memos)
+    db.query(License).filter(License.product_id == product_id).delete()
+    db.query(ProductMemo).filter(ProductMemo.product_id == product_id).delete()
+    db.delete(product)
+    db.commit()

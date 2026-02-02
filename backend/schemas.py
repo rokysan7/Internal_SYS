@@ -86,6 +86,11 @@ class ProductListResponse(BaseModel):
     total_pages: int
 
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
 # ======================== License ========================
 
 
@@ -104,6 +109,11 @@ class LicenseRead(LicenseBase):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class LicenseUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 # ======================== ProductMemo ========================

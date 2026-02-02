@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { createProductMemo, createLicenseMemo } from '../api/memos';
+import {
+  createProductMemo,
+  createLicenseMemo,
+  deleteProductMemo,
+  deleteLicenseMemo,
+} from '../api/memos';
 import { formatDate } from './utils';
 
 /**
@@ -8,11 +13,22 @@ import { formatDate } from './utils';
  * @param {Object[]} memos - 메모 배열
  * @param {'product'|'license'} entityType - 메모 대상 엔티티 타입
  * @param {number} entityId - 엔티티 ID
+ * @param {Object} currentUser - 현재 로그인 사용자 { id, role }
  * @param {function} onMemoAdded - 메모 추가 성공 콜백 (newMemo)
+ * @param {function} onMemoDeleted - 메모 삭제 성공 콜백 (memoId)
  */
-export default function MemoList({ title, memos, entityType, entityId, onMemoAdded }) {
+export default function MemoList({
+  title,
+  memos,
+  entityType,
+  entityId,
+  currentUser,
+  onMemoAdded,
+  onMemoDeleted,
+}) {
   const [newMemo, setNewMemo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const handleAdd = async () => {
     if (!newMemo.trim() || submitting) return;
@@ -29,6 +45,26 @@ export default function MemoList({ title, memos, entityType, entityId, onMemoAdd
     }
   };
 
+  const handleDelete = async (memoId) => {
+    if (!window.confirm('Delete this memo?')) return;
+    setDeletingId(memoId);
+    try {
+      const deleteFn = entityType === 'product' ? deleteProductMemo : deleteLicenseMemo;
+      await deleteFn(memoId);
+      onMemoDeleted?.(memoId);
+    } catch (err) {
+      console.error('Memo deletion failed:', err);
+      alert('Failed to delete memo');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const canDelete = (memo) => {
+    if (!currentUser) return false;
+    return memo.author_id === currentUser.id || currentUser.role === 'ADMIN';
+  };
+
   return (
     <div className="card">
       <div className="section-title">{title} ({memos.length})</div>
@@ -40,8 +76,29 @@ export default function MemoList({ title, memos, entityType, entityId, onMemoAdd
       ) : (
         memos.map((m) => (
           <div key={m.id} className="memo-item">
-            <div className="memo-meta">
-              Author #{m.author_id} &middot; {formatDate(m.created_at)}
+            <div
+              className="memo-meta"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
+              <span>
+                {m.author_name || `Author #${m.author_id}`} &middot; {formatDate(m.created_at)}
+              </span>
+              {canDelete(m) && (
+                <button
+                  onClick={() => handleDelete(m.id)}
+                  disabled={deletingId === m.id}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    padding: '2px 6px',
+                  }}
+                >
+                  {deletingId === m.id ? '...' : 'Delete'}
+                </button>
+              )}
             </div>
             <div className="memo-content">{m.content}</div>
           </div>

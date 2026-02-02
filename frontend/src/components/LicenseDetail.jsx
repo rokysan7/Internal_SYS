@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLicense } from '../api/licenses';
 import { getLicenseMemos } from '../api/memos';
+import { useAuth } from '../contexts/AuthContext';
 import MemoList from './MemoList';
 import { formatDate } from './utils';
 
@@ -11,6 +12,7 @@ import { formatDate } from './utils';
  * @param {function} [onMemoAdded] - 메모 추가 후 콜백 (선택)
  */
 export default function LicenseDetail({ licenseId, onMemoAdded }) {
+  const { user } = useAuth();
   const [license, setLicense] = useState(null);
   const [memos, setMemos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,10 @@ export default function LicenseDetail({ licenseId, onMemoAdded }) {
   const handleMemoAdded = (newMemo) => {
     setMemos((prev) => [...prev, newMemo]);
     onMemoAdded?.(newMemo);
+  };
+
+  const handleMemoDeleted = (memoId) => {
+    setMemos((prev) => prev.filter((m) => m.id !== memoId));
   };
 
   if (loading) return <div className="loading">Loading...</div>;
@@ -76,7 +82,9 @@ export default function LicenseDetail({ licenseId, onMemoAdded }) {
         memos={memos}
         entityType="license"
         entityId={licenseId}
+        currentUser={user}
         onMemoAdded={handleMemoAdded}
+        onMemoDeleted={handleMemoDeleted}
       />
     </div>
   );

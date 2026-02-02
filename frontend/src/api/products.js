@@ -34,3 +34,11 @@ export const bulkUploadProducts = (file) => {
   formData.append('file', file);
   return client.post('/products/bulk', formData);
 };
+
+/** Product 수정 (ADMIN only) */
+export const updateProduct = (id, data) =>
+  client.put(`/products/${id}`, data);
+
+/** Product 삭제 (ADMIN only) */
+export const deleteProduct = (id) =>
+  client.delete(`/products/${id}`);
