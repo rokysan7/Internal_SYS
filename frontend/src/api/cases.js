@@ -38,6 +38,10 @@ export const getComments = (caseId) =>
 export const createComment = (caseId, data) =>
   client.post(`/cases/${caseId}/comments/`, data);
 
+/** 댓글 삭제 */
+export const deleteComment = (caseId, commentId) =>
+  client.delete(`/cases/${caseId}/comments/${commentId}`);
+
 /** 체크리스트 목록 조회 */
 export const getChecklists = (caseId) =>
   client.get(`/cases/${caseId}/checklists`);

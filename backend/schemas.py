@@ -189,11 +189,20 @@ class CaseStatusUpdate(BaseModel):
     status: CaseStatus
 
 
+class CaseAssignee(BaseModel):
+    """Minimal assignee info for case display."""
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class CaseRead(CaseBase):
     id: int
     status: CaseStatus
     created_at: datetime
     completed_at: Optional[datetime] = None
+    assignee: Optional[CaseAssignee] = None
 
     model_config = {"from_attributes": True}
 

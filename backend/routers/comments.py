@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Comment, CSCase, Notification, NotificationType, User
+from models import Comment, CSCase, Notification, NotificationType, User, UserRole
 from routers.auth import get_current_user
 from schemas import CommentCreate, CommentRead
 
@@ -107,3 +107,29 @@ def create_comment(
     # Reload with author info
     db.refresh(comment)
     return comment
+
+
+@router.delete("/{comment_id}", status_code=204)
+def delete_comment(
+    case_id: int,
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a comment. Only author or ADMIN can delete."""
+    comment = db.query(Comment).filter(
+        Comment.id == comment_id,
+        Comment.case_id == case_id
+    ).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    # Permission check: author or ADMIN
+    is_author = comment.author_id == current_user.id
+    is_admin = current_user.role == UserRole.ADMIN
+    if not (is_author or is_admin):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    # Delete comment (cascade will handle replies)
+    db.delete(comment)
+    db.commit()

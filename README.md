@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: Backend v1.0.4 / Frontend v1.0.4
+> **Version**: Backend v1.0.4 / Frontend v1.0.5
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -144,11 +144,13 @@ celery -A celery_app beat --loglevel=info       # Beat (주기 태스크)
 | | DELETE | `/license-memos/{id}` | 라이선스 메모 삭제 (작성자/ADMIN) |
 | **Cases** | GET | `/cases/` | 케이스 목록 (status, assignee, product 필터) |
 | | POST | `/cases/` | 케이스 생성 |
-| | GET | `/cases/{id}` | 케이스 상세 |
+| | GET | `/cases/{id}` | 케이스 상세 (담당자 정보 포함) |
 | | PUT | `/cases/{id}` | 케이스 수정 |
-| | PATCH | `/cases/{id}/status` | 상태 변경 |
+| | PATCH | `/cases/{id}/status` | 상태 변경 (DONE 시 완료시간 자동 기록) |
+| | DELETE | `/cases/{id}` | 케이스 삭제 (담당자/ADMIN, cascade) |
 | | GET | `/cases/similar?query=` | 유사 케이스 검색 |
 | **Comments** | GET/POST | `/cases/{id}/comments` | 댓글 CRUD |
+| | DELETE | `/cases/{id}/comments/{cid}` | 댓글 삭제 (작성자/ADMIN) |
 | **Checklists** | GET/POST | `/cases/{id}/checklists` | 체크리스트 CRUD |
 | | PATCH | `/checklists/{id}` | 체크리스트 토글 |
 | **Notifications** | GET | `/notifications/` | 알림 목록 (user_id, unread 필터) |
@@ -240,7 +242,7 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 
 - **인증 시스템**: JWT 로그인, 60분 비활동 자동 로그아웃, 역할 기반 접근 제어
 - **회원 관리** (ADMIN): 사용자 생성/수정/비활성화, 비밀번호 재설정
-- **케이스 관리**: 생성, 조회, 수정, 상태 변경 (OPEN → IN_PROGRESS → DONE)
+- **케이스 관리**: 생성, 조회, 수정, 삭제(cascade), 상태 변경 (OPEN → IN_PROGRESS → DONE), 완료 시간 자동 기록
 - **제품·라이선스 관리**: 제품/라이선스 CRUD (ADMIN), 메모 작성/삭제 (작성자/ADMIN)
 - **CSV 일괄 업로드**: Product + License 대량 등록 (중복 자동 처리)
 - **페이지네이션 & 정렬**: 제품 목록 25개 단위 페이징, 이름/날짜순 정렬

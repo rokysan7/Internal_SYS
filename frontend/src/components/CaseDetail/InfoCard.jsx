@@ -38,7 +38,7 @@ export default function InfoCard({ caseData, onStatusChange }) {
       </div>
       <div className="detail-field">
         <span className="detail-label">Assignee</span>
-        <span className="detail-value">{caseData.assignee_id ?? 'Unassigned'}</span>
+        <span className="detail-value">{caseData.assignee?.name ?? 'Unassigned'}</span>
       </div>
       <div className="detail-field">
         <span className="detail-label">Product</span>
@@ -58,6 +58,12 @@ export default function InfoCard({ caseData, onStatusChange }) {
         <span className="detail-label">Created</span>
         <span className="detail-value">{formatDate(caseData.created_at)}</span>
       </div>
+      {caseData.status === 'DONE' && caseData.completed_at && (
+        <div className="detail-field">
+          <span className="detail-label">Completed</span>
+          <span className="detail-value">{formatDate(caseData.completed_at)}</span>
+        </div>
+      )}
       {caseData.tags?.length > 0 && (
         <div className="detail-field">
           <span className="detail-label">Tags</span>

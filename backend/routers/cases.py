@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import CaseStatus, CSCase, Notification, NotificationType, User, UserRole
@@ -47,7 +47,7 @@ def list_cases(
     product_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
-    q = db.query(CSCase)
+    q = db.query(CSCase).options(joinedload(CSCase.assignee))
     if status:
         q = q.filter(CSCase.status == status)
     if assignee_id:
@@ -92,7 +92,12 @@ def create_case(data: CaseCreate, db: Session = Depends(get_db)):
 
 @router.get("/{case_id}", response_model=CaseRead)
 def get_case(case_id: int, db: Session = Depends(get_db)):
-    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    case = (
+        db.query(CSCase)
+        .options(joinedload(CSCase.assignee))
+        .filter(CSCase.id == case_id)
+        .first()
+    )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return case
@@ -100,7 +105,12 @@ def get_case(case_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{case_id}", response_model=CaseRead)
 def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
-    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    case = (
+        db.query(CSCase)
+        .options(joinedload(CSCase.assignee))
+        .filter(CSCase.id == case_id)
+        .first()
+    )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
@@ -122,6 +132,8 @@ def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
         db.add(notif)
         db.commit()
 
+    # Reload with assignee for response
+    db.refresh(case)
     return case
 
 
@@ -133,7 +145,12 @@ def update_case_status(
     current_user: User = Depends(get_current_user),
 ):
     """Update case status. Only assignee or ADMIN can change status."""
-    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    case = (
+        db.query(CSCase)
+        .options(joinedload(CSCase.assignee))
+        .filter(CSCase.id == case_id)
+        .first()
+    )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 

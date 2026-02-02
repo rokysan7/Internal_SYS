@@ -137,8 +137,9 @@ class CSCase(Base):
     assignee = relationship("User", back_populates="assigned_cases")
     product = relationship("Product")
     license = relationship("License")
-    comments = relationship("Comment", back_populates="case")
-    checklists = relationship("Checklist", back_populates="case")
+    comments = relationship("Comment", back_populates="case", cascade="all, delete-orphan")
+    checklists = relationship("Checklist", back_populates="case", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="case", cascade="all, delete-orphan")
 
 
 class Comment(Base):
@@ -181,4 +182,4 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="notifications")
-    case = relationship("CSCase")
+    case = relationship("CSCase", back_populates="notifications")

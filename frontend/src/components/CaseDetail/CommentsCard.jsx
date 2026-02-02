@@ -4,7 +4,7 @@ import { formatDate } from '../utils';
 /**
  * Single comment with nested replies support.
  */
-function CommentItem({ comment, depth = 0, onReply }) {
+function CommentItem({ comment, depth = 0, onReply, onDelete, currentUser }) {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState('');
 
@@ -15,7 +15,15 @@ function CommentItem({ comment, depth = 0, onReply }) {
     setShowReplyInput(false);
   };
 
+  const handleDelete = () => {
+    if (!window.confirm('Delete this comment?')) return;
+    onDelete(comment.id);
+  };
+
   const authorName = comment.author?.name || `User #${comment.author_id}`;
+  const canDelete = currentUser && (
+    currentUser.id === comment.author_id || currentUser.role === 'ADMIN'
+  );
 
   return (
     <div style={{ marginLeft: depth > 0 ? depth * 24 : 0 }}>
@@ -31,13 +39,24 @@ function CommentItem({ comment, depth = 0, onReply }) {
           )}
         </div>
         <div className="memo-content">{comment.content}</div>
-        <button
-          className="btn btn-ghost btn-sm"
-          style={{ marginTop: 4, padding: '2px 8px', fontSize: '0.75rem' }}
-          onClick={() => setShowReplyInput(!showReplyInput)}
-        >
-          {showReplyInput ? 'Cancel' : 'Reply'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: 4 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ padding: '2px 8px', fontSize: '0.75rem' }}
+            onClick={() => setShowReplyInput(!showReplyInput)}
+          >
+            {showReplyInput ? 'Cancel' : 'Reply'}
+          </button>
+          {canDelete && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '2px 8px', fontSize: '0.75rem', color: '#dc2626' }}
+              onClick={handleDelete}
+            >
+              Delete
+            </button>
+          )}
+        </div>
 
         {showReplyInput && (
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: 8 }}>
@@ -67,6 +86,8 @@ function CommentItem({ comment, depth = 0, onReply }) {
               comment={reply}
               depth={depth + 1}
               onReply={onReply}
+              onDelete={onDelete}
+              currentUser={currentUser}
             />
           ))}
         </div>
@@ -82,8 +103,10 @@ function CommentItem({ comment, depth = 0, onReply }) {
  * @param {string} props.value - Current input value
  * @param {Function} props.onChange - Input change handler
  * @param {Function} props.onAdd - Add comment handler (content, parentId?)
+ * @param {Function} props.onDelete - Delete comment handler (commentId)
+ * @param {Object} props.currentUser - Current logged-in user
  */
-export default function CommentsCard({ comments, value, onChange, onAdd }) {
+export default function CommentsCard({ comments, value, onChange, onAdd, onDelete, currentUser }) {
   const handleAddComment = () => {
     if (!value.trim()) return;
     onAdd(value, null);
@@ -108,7 +131,13 @@ export default function CommentsCard({ comments, value, onChange, onAdd }) {
         <div className="empty-state">No comments yet.</div>
       ) : (
         comments.map((cm) => (
-          <CommentItem key={cm.id} comment={cm} onReply={handleReply} />
+          <CommentItem
+            key={cm.id}
+            comment={cm}
+            onReply={handleReply}
+            onDelete={onDelete}
+            currentUser={currentUser}
+          />
         ))
       )}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>

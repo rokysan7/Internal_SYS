@@ -6,6 +6,7 @@ import {
   updateCaseStatus,
   getComments,
   createComment,
+  deleteComment,
   getChecklists,
   createChecklist,
   updateChecklist,
@@ -94,6 +95,18 @@ export default function CaseDetail({ caseId }) {
     }
   };
 
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await deleteComment(caseId, commentId);
+      // Refresh comments
+      const commentsRes = await getComments(caseId);
+      setComments(commentsRes.data);
+    } catch (err) {
+      console.error('Comment deletion failed:', err);
+      alert(err.response?.data?.detail || 'Delete failed');
+    }
+  };
+
   const handleAddCheckItem = async () => {
     if (!newCheckItem.trim()) return;
     try {
@@ -150,6 +163,8 @@ export default function CaseDetail({ caseId }) {
             value={newComment}
             onChange={setNewComment}
             onAdd={handleAddComment}
+            onDelete={handleDeleteComment}
+            currentUser={user}
           />
         </div>
 
