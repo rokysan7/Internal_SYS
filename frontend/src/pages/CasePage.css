@@ -1,5 +1,34 @@
 /* ===== CasePage Specific Styles ===== */
 
+/* Multi-select assignee */
+.multi-select-wrap .selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.multi-select-wrap .selected-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.multi-select-wrap .selected-tag button {
+  background: none;
+  border: none;
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  line-height: 1;
+}
+
 /* Similar Cases Suggestions */
 .similar-cases {
   margin-top: -0.5rem;

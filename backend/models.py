@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Table,
     Text,
     UniqueConstraint,
 )
@@ -104,6 +105,10 @@ class ProductMemo(Base):
     product = relationship("Product", back_populates="memos")
     author = relationship("User")
 
+    @property
+    def author_name(self):
+        return self.author.name if self.author else None
+
 
 class LicenseMemo(Base):
     __tablename__ = "license_memos"
@@ -116,6 +121,18 @@ class LicenseMemo(Base):
 
     license = relationship("License", back_populates="memos")
     author = relationship("User")
+
+    @property
+    def author_name(self):
+        return self.author.name if self.author else None
+
+
+case_assignees = Table(
+    "case_assignees",
+    Base.metadata,
+    Column("case_id", Integer, ForeignKey("cs_cases.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class CSCase(Base):
@@ -135,11 +152,20 @@ class CSCase(Base):
     completed_at = Column(DateTime, nullable=True)
 
     assignee = relationship("User", back_populates="assigned_cases")
+    assignees = relationship("User", secondary=case_assignees, backref="multi_assigned_cases")
     product = relationship("Product")
     license = relationship("License")
     comments = relationship("Comment", back_populates="case", cascade="all, delete-orphan")
     checklists = relationship("Checklist", back_populates="case", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="case", cascade="all, delete-orphan")
+
+    @property
+    def assignee_ids(self):
+        return [u.id for u in self.assignees] if self.assignees else []
+
+    @property
+    def assignee_names(self):
+        return [u.name for u in self.assignees] if self.assignees else []
 
 
 class Comment(Base):

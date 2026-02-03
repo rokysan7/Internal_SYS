@@ -81,7 +81,7 @@ export default function MemoList({
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
               <span>
-                {m.author_name || `Author #${m.author_id}`} &middot; {formatDate(m.created_at)}
+                {m.author_name || 'Unknown'} &middot; {formatDate(m.created_at)}
               </span>
               {canDelete(m) && (
                 <button

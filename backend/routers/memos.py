@@ -5,7 +5,7 @@ Product Memo / License Memo CRUD 라우터.
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import License, LicenseMemo, Product, ProductMemo, User, UserRole
@@ -30,6 +30,7 @@ def list_product_memos(product_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Product not found")
     return (
         db.query(ProductMemo)
+        .options(joinedload(ProductMemo.author))
         .filter(ProductMemo.product_id == product_id)
         .order_by(ProductMemo.created_at.desc())
         .all()
@@ -56,6 +57,7 @@ def create_product_memo(
     db.add(memo)
     db.commit()
     db.refresh(memo)
+    memo.author = current_user
     return memo
 
 
@@ -85,6 +87,7 @@ def list_license_memos(license_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="License not found")
     return (
         db.query(LicenseMemo)
+        .options(joinedload(LicenseMemo.author))
         .filter(LicenseMemo.license_id == license_id)
         .order_by(LicenseMemo.created_at.desc())
         .all()
@@ -111,6 +114,7 @@ def create_license_memo(
     db.add(memo)
     db.commit()
     db.refresh(memo)
+    memo.author = current_user
     return memo
 
 

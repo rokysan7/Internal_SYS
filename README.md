@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: Backend v1.0.5 / Frontend v1.0.6
+> **Version**: v1.1.0
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -20,7 +20,7 @@
 ```
 ┌─────────────┐     HTTP/JSON     ┌──────────────┐     SQL      ┌────────────┐
 │  React SPA  │ ←───────────────→ │  FastAPI API  │ ←──────────→ │ PostgreSQL │
-│  (Vite)     │   Bearer JWT      │  10 Routers   │              │  8 Tables  │
+│  (Vite)     │   Bearer JWT      │  10 Routers   │              │  9 Tables  │
 └─────────────┘                   └──────┬───────┘              └────────────┘
                                          │ .delay()
                                          ▼
@@ -30,12 +30,13 @@
                                   └──────────────┘
 ```
 
-### Database Schema (8 Tables)
+### Database Schema (9 Tables)
 
 - **User** — 역할: CS / ENGINEER / ADMIN
 - **Product** → has many **License**
-- **ProductMemo** / **LicenseMemo** — 제품·라이선스별 지식 축적
-- **CSCase** → belongs to Product, License, User(assignee)
+- **ProductMemo** / **LicenseMemo** — 제품·라이선스별 지식 축적 (작성자 이름 표시)
+- **CSCase** → belongs to Product, License; many-to-many **User**(assignees) via **case_assignees**
+- **case_assignees** — 케이스-담당자 다대다 관계 테이블
 - **Comment** — 내부/외부 구분 (`is_internal`), 중첩 답글 지원 (`parent_id`)
 - **Checklist** — 케이스별 체크리스트
 - **Notification** — ASSIGNEE / REMINDER / COMMENT 타입
@@ -142,9 +143,9 @@ celery -A celery_app beat --loglevel=info       # Beat (주기 태스크)
 | | GET/POST | `/licenses/{id}/memos` | 라이선스 메모 (JWT 인증) |
 | | DELETE | `/product-memos/{id}` | 제품 메모 삭제 (작성자/ADMIN) |
 | | DELETE | `/license-memos/{id}` | 라이선스 메모 삭제 (작성자/ADMIN) |
-| **Cases** | GET | `/cases/` | 케이스 목록 (status, assignee, product 필터) |
-| | POST | `/cases/` | 케이스 생성 |
-| | GET | `/cases/{id}` | 케이스 상세 (담당자 정보 포함) |
+| **Cases** | GET | `/cases/` | 케이스 목록 (status, assignee, product, requester 필터) |
+| | POST | `/cases/` | 케이스 생성 (복수 담당자 지원) |
+| | GET | `/cases/{id}` | 케이스 상세 (복수 담당자 정보 포함) |
 | | PUT | `/cases/{id}` | 케이스 수정 |
 | | PATCH | `/cases/{id}/status` | 상태 변경 (DONE 시 완료시간 자동 기록) |
 | | DELETE | `/cases/{id}` | 케이스 삭제 (담당자/ADMIN, cascade) |
@@ -181,7 +182,7 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 ├── backend/
 │   ├── main.py                 # FastAPI entry point + CORS
-│   ├── models.py               # SQLAlchemy ORM (8 models)
+│   ├── models.py               # SQLAlchemy ORM (9 models incl. case_assignees)
 │   ├── schemas.py              # Pydantic request/response
 │   ├── database.py             # DB session
 │   ├── celery_app.py           # Celery config (Redis broker)
@@ -190,14 +191,14 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 │   ├── routers/
 │   │   ├── auth.py             # JWT login/me/change-password
 │   │   ├── admin.py            # User management (ADMIN only)
-│   │   ├── cases.py            # CS Case CRUD + similar search
+│   │   ├── cases.py            # CS Case CRUD + similar search + multi-assignee
 │   │   ├── comments.py         # Comments + Celery trigger
 │   │   ├── checklists.py       # Checklist CRUD
 │   │   ├── products.py         # Product CRUD
 │   │   ├── licenses.py         # License CRUD
-│   │   ├── memos.py            # Product/License memos
+│   │   ├── memos.py            # Product/License memos (author name)
 │   │   ├── notifications.py    # Notification list/read
-│   │   └── statistics.py       # Assignee/status/time stats
+│   │   └── statistics.py       # Assignee/status/time stats (multi-assignee)
 │   ├── alembic/                # DB migrations
 │   └── tests/                  # Integration tests (82 cases)
 │       ├── conftest.py
@@ -226,14 +227,19 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
         │   ├── PrivateRoute.jsx  # Login required wrapper
         │   ├── AdminRoute.jsx    # ADMIN role required wrapper
         │   ├── Layout.jsx        # Sidebar + topbar + user info
+        │   ├── CaseForm.jsx      # Case create/edit (auto requester, multi-assignee)
+        │   ├── CaseDetail/       # Case detail with InfoCard, comments, checklists
+        │   ├── MemoList.jsx      # Memo list with author name display
         │   ├── Pagination.jsx, SortButtons.jsx, etc.
         ├── pages/
         │   ├── LoginPage.jsx     # Login form
+        │   ├── Dashboard.jsx     # My Cases, Recent Cases, Stats (ADMIN)
+        │   ├── CasePage.jsx      # Case list with filters
+        │   ├── ProductPage.jsx   # Product detail with inline license memos
         │   ├── admin/            # ADMIN only pages
         │   │   ├── UserListPage.jsx
         │   │   ├── UserCreatePage.jsx
         │   │   └── UserEditPage.jsx
-        │   └── Dashboard, CasePage, ProductPage, LicensePage
         ├── App.jsx             # Router config + route protection
         └── main.jsx            # Entry point + AuthProvider
 ```
@@ -243,15 +249,42 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 - **인증 시스템**: JWT 로그인, 60분 비활동 자동 로그아웃, 역할 기반 접근 제어
 - **회원 관리** (ADMIN): 사용자 생성/수정/비활성화, 비밀번호 재설정
 - **케이스 관리**: 생성, 조회, 수정, 삭제(cascade), 상태 변경 (OPEN → IN_PROGRESS → DONE), 완료 시간 자동 기록
-- **제품·라이선스 관리**: 제품/라이선스 CRUD (ADMIN), 메모 작성/삭제 (작성자/ADMIN)
+- **복수 담당자 지원**: 케이스당 여러 명의 담당자 배정 가능 (다대다 관계), 모든 담당자에게 알림 발송
+- **케이스 생성 자동화**: 요청자(requester)는 로그인 사용자로 자동 설정
+- **제품·라이선스 관리**: 제품/라이선스 CRUD (ADMIN), 인라인 라이선스 상세·메모 표시, 메모 작성자 이름 표시
 - **CSV 일괄 업로드**: Product + License 대량 등록 (중복 자동 처리)
 - **페이지네이션 & 정렬**: 제품 목록 25개 단위 페이징, 이름/날짜순 정렬
-- **댓글 & 체크리스트**: 내부/외부 댓글, 중첩 답글 지원, 케이스별 체크리스트
-- **알림 시스템**: 담당자 배정, 댓글/답글 알림, 24시간 미처리 리마인드
+- **댓글 & 체크리스트**: 내부/외부 댓글, 중첩 답글 지원, 댓글 삭제, 케이스별 체크리스트
+- **알림 시스템**: 복수 담당자 배정 알림, 댓글/답글 알림, 24시간 미처리 리마인드
 - **AI 유사 케이스 추천**: 제목/내용 기반 과거 케이스 검색
-- **업무 통계**: 담당자별/상태별 케이스 현황, 평균 처리 시간
+- **업무 통계**: 담당자별/상태별 케이스 현황, 평균 처리 시간 (복수 담당자 반영)
+- **Dashboard**: 내 할당 케이스, 내 작성 케이스, 최근 케이스 (각 섹션 페이지네이션), 담당자별 업무 현황 (ADMIN 전용)
 - **Dashboard 카드 클릭**: 상태별 케이스 필터링 (Total/Open/In Progress/Done → 해당 상태만 시간순 조회)
 - **30초 폴링 알림 Badge**: 실시간에 준하는 미읽음 알림 표시
+
+## Changelog
+
+### v1.1.0 (2026-02-03)
+- **Products 페이지 개선**: 라이선스 인라인 상세 표시, 별도 라이선스 페이지 제거
+- **메모 작성자 표시**: ProductMemo/LicenseMemo에 작성자 이름 표시
+- **Case Requester 자동 설정**: 로그인 사용자 이름으로 자동 설정 (읽기 전용)
+- **복수 Assignee 지원**: case_assignees 다대다 테이블, 복수 담당자 선택 UI, 통계/알림 연동
+- **Dashboard 개선**: My Assigned Cases, My Created Cases 섹션 추가, ADMIN 전용 업무 현황
+
+### v1.0.6 (2025)
+- Dashboard 상태 카드 클릭 필터링, 422 에러 수정
+
+### v1.0.5 (2025)
+- Case 상세 담당자 이름 표시, 완료 시간, 댓글 삭제
+
+### v1.0.4 (2025)
+- Product/License/Memo 전체 CRUD
+
+### v1.0.3 (2025)
+- CS Case 기능 업그레이드
+
+### v1.0.2 (2025)
+- 인증 시스템, 프론트엔드 모듈화
 
 ## License
 

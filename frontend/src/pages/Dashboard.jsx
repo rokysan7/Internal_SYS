@@ -1,52 +1,97 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCases, getStatistics } from '../api/cases';
+import { useAuth } from '../contexts/AuthContext';
 import CaseList from '../components/CaseList';
+import Pagination from '../components/Pagination';
 import './shared.css';
 import './Dashboard.css';
 
+const PAGE_SIZE = 5;
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [cases, setCases] = useState([]);
+  const { user } = useAuth();
   const [statusStats, setStatusStats] = useState([]);
   const [timeStats, setTimeStats] = useState(null);
   const [assigneeStats, setAssigneeStats] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Recent Cases
+  const [recentCases, setRecentCases] = useState([]);
+  const [recentPage, setRecentPage] = useState(1);
+  const [recentTotalPages, setRecentTotalPages] = useState(1);
+
+  // My Assigned Cases
+  const [assignedCases, setAssignedCases] = useState([]);
+  const [assignedPage, setAssignedPage] = useState(1);
+  const [assignedTotalPages, setAssignedTotalPages] = useState(1);
+
+  // My Created Cases
+  const [createdCases, setCreatedCases] = useState([]);
+  const [createdPage, setCreatedPage] = useState(1);
+  const [createdTotalPages, setCreatedTotalPages] = useState(1);
+
+  // Stats fetch (once)
   useEffect(() => {
-    async function fetchData() {
+    async function fetchStats() {
       try {
-        const [casesRes, statusRes, timeRes, assigneeRes] = await Promise.all([
-          getCases(),
+        const [statusRes, timeRes, assigneeRes] = await Promise.all([
           getStatistics('status'),
           getStatistics('time'),
           getStatistics('assignee'),
         ]);
-        setCases(casesRes.data.items || []);
         setStatusStats(statusRes.data);
         setTimeStats(timeRes.data);
         setAssigneeStats(assigneeRes.data);
       } catch (err) {
-        console.error('Dashboard data fetch failed:', err);
+        console.error('Stats fetch failed:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+    fetchStats();
   }, []);
+
+  // Recent Cases (paginated)
+  useEffect(() => {
+    getCases({ page: recentPage, page_size: PAGE_SIZE })
+      .then((res) => {
+        setRecentCases(res.data.items || []);
+        setRecentTotalPages(res.data.total_pages || 1);
+      })
+      .catch(() => {});
+  }, [recentPage]);
+
+  // My Assigned Cases (paginated)
+  useEffect(() => {
+    if (!user?.id) return;
+    getCases({ page: assignedPage, page_size: PAGE_SIZE, assignee_id: user.id })
+      .then((res) => {
+        setAssignedCases(res.data.items || []);
+        setAssignedTotalPages(res.data.total_pages || 1);
+      })
+      .catch(() => {});
+  }, [assignedPage, user?.id]);
+
+  // My Created Cases (paginated)
+  useEffect(() => {
+    if (!user?.name) return;
+    getCases({ page: createdPage, page_size: PAGE_SIZE, requester: user.name })
+      .then((res) => {
+        setCreatedCases(res.data.items || []);
+        setCreatedTotalPages(res.data.total_pages || 1);
+      })
+      .catch(() => {});
+  }, [createdPage, user?.name]);
 
   if (loading) return <div className="loading">Loading...</div>;
 
-  const totalCases = cases.length;
   const countByStatus = (status) => {
     const found = statusStats.find((s) => s.status === status);
     return found ? found.count : 0;
   };
-
-  const recentCases = [...cases]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 10);
-
+  const totalCases = statusStats.reduce((sum, s) => sum + s.count, 0);
   const avgHours = timeStats?.avg_hours;
 
   return (
@@ -81,8 +126,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Assignee Statistics */}
-      {assigneeStats.length > 0 && (
+      {/* Assignee Statistics (ADMIN only) */}
+      {user?.role === 'ADMIN' && assigneeStats.length > 0 && (
         <div className="section">
           <div className="section-title">담당자별 업무 현황</div>
           <div className="card">
@@ -114,10 +159,37 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Cases Table */}
+      {/* My Assigned Cases */}
+      <div className="section">
+        <div className="section-title">My Assigned Cases</div>
+        <CaseList cases={assignedCases} />
+        <Pagination
+          page={assignedPage}
+          totalPages={assignedTotalPages}
+          onPageChange={setAssignedPage}
+        />
+      </div>
+
+      {/* My Created Cases */}
+      <div className="section">
+        <div className="section-title">My Created Cases</div>
+        <CaseList cases={createdCases} />
+        <Pagination
+          page={createdPage}
+          totalPages={createdTotalPages}
+          onPageChange={setCreatedPage}
+        />
+      </div>
+
+      {/* Recent Cases */}
       <div className="section">
         <div className="section-title">Recent Cases</div>
         <CaseList cases={recentCases} />
+        <Pagination
+          page={recentPage}
+          totalPages={recentTotalPages}
+          onPageChange={setRecentPage}
+        />
       </div>
     </div>
   );

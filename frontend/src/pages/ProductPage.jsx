@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getProductLicenses, deleteProduct, updateProduct } from '../api/products';
 import { deleteLicense } from '../api/licenses';
-import { getProductMemos } from '../api/memos';
+import { getProductMemos, getLicenseMemos } from '../api/memos';
 import { useAuth } from '../contexts/AuthContext';
 import ProductSearch from '../components/ProductSearch';
 import ProductCreateForm from '../components/ProductCreateForm';
@@ -26,9 +25,13 @@ export default function ProductPage() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedLicense, setSelectedLicense] = useState(null);
+  const [licenseMemos, setLicenseMemos] = useState([]);
 
   const handleSelect = async (product) => {
     setSelected(product);
+    setSelectedLicense(null);
+    setLicenseMemos([]);
     try {
       const [licRes, memoRes] = await Promise.all([
         getProductLicenses(product.id),
@@ -39,6 +42,29 @@ export default function ProductPage() {
     } catch (err) {
       console.error('Product detail fetch failed:', err);
     }
+  };
+
+  const handleSelectLicense = async (lic) => {
+    if (selectedLicense?.id === lic.id) {
+      setSelectedLicense(null);
+      setLicenseMemos([]);
+      return;
+    }
+    setSelectedLicense(lic);
+    try {
+      const res = await getLicenseMemos(lic.id);
+      setLicenseMemos(res.data);
+    } catch (err) {
+      console.error('License memo fetch failed:', err);
+    }
+  };
+
+  const handleLicenseMemoAdded = (newMemo) => {
+    setLicenseMemos((prev) => [...prev, newMemo]);
+  };
+
+  const handleLicenseMemoDeleted = (memoId) => {
+    setLicenseMemos((prev) => prev.filter((m) => m.id !== memoId));
   };
 
   const handleMemoAdded = (newMemo) => {
@@ -55,6 +81,10 @@ export default function ProductPage() {
     try {
       await deleteLicense(lic.id);
       setLicenses((prev) => prev.filter((l) => l.id !== lic.id));
+      if (selectedLicense?.id === lic.id) {
+        setSelectedLicense(null);
+        setLicenseMemos([]);
+      }
     } catch (err) {
       const msg = err.response?.data?.detail || 'Delete failed';
       alert(msg);
@@ -220,8 +250,19 @@ export default function ProductPage() {
                 )}
               </div>
 
+              {/* Product Memos */}
+              <MemoList
+                title="Product Memos"
+                memos={memos}
+                entityType="product"
+                entityId={selected.id}
+                currentUser={user}
+                onMemoAdded={handleMemoAdded}
+                onMemoDeleted={handleMemoDeleted}
+              />
+
               {/* Licenses */}
-              <div className="card" style={{ marginBottom: '1.25rem' }}>
+              <div className="card" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
                 <div className="section-title">Licenses ({licenses.length})</div>
                 {licenses.length === 0 ? (
                   <div className="empty-state">No licenses registered.</div>
@@ -239,16 +280,20 @@ export default function ProductPage() {
                       </thead>
                       <tbody>
                         {licenses.map((lic) => (
-                          <tr key={lic.id}>
-                            <td><Link to={`/licenses/${lic.id}`}>#{lic.id}</Link></td>
-                            <td><Link to={`/licenses/${lic.id}`}>{lic.name}</Link></td>
+                          <tr
+                            key={lic.id}
+                            onClick={() => handleSelectLicense(lic)}
+                            className={`license-row${selectedLicense?.id === lic.id ? ' selected' : ''}`}
+                          >
+                            <td>#{lic.id}</td>
+                            <td>{lic.name}</td>
                             <td>{lic.description || '-'}</td>
                             <td>{formatDate(lic.created_at)}</td>
                             {user?.role === 'ADMIN' && (
                               <td>
                                 <button
                                   className="btn btn-danger btn-sm"
-                                  onClick={() => handleDeleteLicense(lic)}
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteLicense(lic); }}
                                   disabled={deletingLicenseId === lic.id}
                                   style={{ padding: '2px 8px', fontSize: '0.75rem' }}
                                 >
@@ -264,16 +309,18 @@ export default function ProductPage() {
                 )}
               </div>
 
-              {/* Product Memos */}
-              <MemoList
-                title="Product Memos"
-                memos={memos}
-                entityType="product"
-                entityId={selected.id}
-                currentUser={user}
-                onMemoAdded={handleMemoAdded}
-                onMemoDeleted={handleMemoDeleted}
-              />
+              {/* Selected License Detail (inline) */}
+              {selectedLicense && (
+                <MemoList
+                  title={`${selectedLicense.name} Memos`}
+                  memos={licenseMemos}
+                  entityType="license"
+                  entityId={selectedLicense.id}
+                  currentUser={user}
+                  onMemoAdded={handleLicenseMemoAdded}
+                  onMemoDeleted={handleLicenseMemoDeleted}
+                />
+              )}
             </>
           )}
         </div>

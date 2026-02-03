@@ -6,7 +6,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import CasePage from './pages/CasePage';
 import ProductPage from './pages/ProductPage';
-import LicensePage from './pages/LicensePage';
+
 import UserListPage from './pages/admin/UserListPage';
 import UserCreatePage from './pages/admin/UserCreatePage';
 import UserEditPage from './pages/admin/UserEditPage';
@@ -30,7 +30,6 @@ export default function App() {
         <Route path="cases/new" element={<CasePage />} />
         <Route path="cases/:id" element={<CasePage />} />
         <Route path="products" element={<ProductPage />} />
-        <Route path="licenses/:id" element={<LicensePage />} />
 
         {/* Admin routes */}
         <Route path="admin/users" element={<AdminRoute><UserListPage /></AdminRoute>} />

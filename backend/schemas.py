@@ -131,6 +131,7 @@ class ProductMemoRead(ProductMemoBase):
     id: int
     product_id: int
     author_id: int
+    author_name: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -151,6 +152,7 @@ class LicenseMemoRead(LicenseMemoBase):
     id: int
     license_id: int
     author_id: int
+    author_name: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -165,13 +167,12 @@ class CaseBase(BaseModel):
     product_id: Optional[int] = None
     license_id: Optional[int] = None
     requester: str
-    assignee_id: Optional[int] = None
     priority: Priority = Priority.MEDIUM
     tags: Optional[List[str]] = []
 
 
 class CaseCreate(CaseBase):
-    pass
+    assignee_ids: Optional[List[int]] = []
 
 
 class CaseUpdate(BaseModel):
@@ -180,7 +181,7 @@ class CaseUpdate(BaseModel):
     product_id: Optional[int] = None
     license_id: Optional[int] = None
     requester: Optional[str] = None
-    assignee_id: Optional[int] = None
+    assignee_ids: Optional[List[int]] = None
     priority: Optional[Priority] = None
     tags: Optional[List[str]] = None
 
@@ -199,6 +200,9 @@ class CaseAssignee(BaseModel):
 
 class CaseRead(CaseBase):
     id: int
+    assignee_id: Optional[int] = None
+    assignee_ids: List[int] = []
+    assignee_names: List[str] = []
     status: CaseStatus
     created_at: datetime
     completed_at: Optional[datetime] = None

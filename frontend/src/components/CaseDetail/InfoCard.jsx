@@ -37,8 +37,12 @@ export default function InfoCard({ caseData, onStatusChange }) {
         <span className="detail-value">{caseData.requester}</span>
       </div>
       <div className="detail-field">
-        <span className="detail-label">Assignee</span>
-        <span className="detail-value">{caseData.assignee?.name ?? 'Unassigned'}</span>
+        <span className="detail-label">Assignees</span>
+        <span className="detail-value">
+          {caseData.assignee_names?.length > 0
+            ? caseData.assignee_names.join(', ')
+            : 'Unassigned'}
+        </span>
       </div>
       <div className="detail-field">
         <span className="detail-label">Product</span>
@@ -50,7 +54,7 @@ export default function InfoCard({ caseData, onStatusChange }) {
         <span className="detail-label">License</span>
         <span className="detail-value">
           {caseData.license_id ? (
-            <Link to={`/licenses/${caseData.license_id}`}>#{caseData.license_id}</Link>
+            <Link to="/products">#{caseData.license_id}</Link>
           ) : '-'}
         </span>
       </div>

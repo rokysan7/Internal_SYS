@@ -10,7 +10,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import CaseStatus, CSCase, Notification, NotificationType, User, UserRole
+from models import CaseStatus, CSCase, case_assignees, Notification, NotificationType, User, UserRole
 from routers.auth import get_current_user
 from math import ceil
 from schemas import (
@@ -48,15 +48,18 @@ def list_cases(
     status: Optional[CaseStatus] = None,
     assignee_id: Optional[int] = None,
     product_id: Optional[int] = None,
+    requester: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    q = db.query(CSCase).options(joinedload(CSCase.assignee))
+    q = db.query(CSCase).options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
     if status:
         q = q.filter(CSCase.status == status)
     if assignee_id:
-        q = q.filter(CSCase.assignee_id == assignee_id)
+        q = q.filter(CSCase.assignees.any(User.id == assignee_id))
     if product_id:
         q = q.filter(CSCase.product_id == product_id)
+    if requester:
+        q = q.filter(CSCase.requester == requester)
 
     total = q.count()
     total_pages = ceil(total / page_size) if total > 0 else 1
@@ -74,20 +77,35 @@ def list_cases(
 
 @router.post("/", response_model=CaseRead, status_code=201)
 def create_case(data: CaseCreate, db: Session = Depends(get_db)):
-    case = CSCase(**data.model_dump())
+    case_data = data.model_dump(exclude={"assignee_ids"})
+    assignee_ids = data.assignee_ids or []
+
+    # Set assignee_id to first assignee for backward compat
+    if assignee_ids:
+        case_data["assignee_id"] = assignee_ids[0]
+
+    case = CSCase(**case_data)
     db.add(case)
+    db.flush()
+
+    # Add many-to-many assignees
+    if assignee_ids:
+        users = db.query(User).filter(User.id.in_(assignee_ids)).all()
+        case.assignees = users
+
     db.commit()
     db.refresh(case)
 
-    # 담당자 지정 시 알림 자동 생성
-    if case.assignee_id:
+    # Send notifications to ALL assignees
+    for uid in assignee_ids:
         notif = Notification(
-            user_id=case.assignee_id,
+            user_id=uid,
             case_id=case.id,
             message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
             type=NotificationType.ASSIGNEE,
         )
         db.add(notif)
+    if assignee_ids:
         db.commit()
 
     return case
@@ -113,11 +131,15 @@ def get_statistics(
 
 
 def _stat_by_assignee(db: Session) -> List[StatByAssignee]:
-    """담당자별 미처리/처리중/완료 건수."""
+    """담당자별 미처리/처리중/완료 건수 (many-to-many)."""
     users = db.query(User).all()
     results = []
     for user in users:
-        cases = db.query(CSCase).filter(CSCase.assignee_id == user.id).all()
+        cases = (
+            db.query(CSCase)
+            .filter(CSCase.assignees.any(User.id == user.id))
+            .all()
+        )
         open_count = sum(1 for c in cases if c.status == CaseStatus.OPEN)
         in_progress = sum(1 for c in cases if c.status == CaseStatus.IN_PROGRESS)
         done = sum(1 for c in cases if c.status == CaseStatus.DONE)
@@ -169,7 +191,7 @@ def _stat_by_time(db: Session) -> StatByTime:
 def get_case(case_id: int, db: Session = Depends(get_db)):
     case = (
         db.query(CSCase)
-        .options(joinedload(CSCase.assignee))
+        .options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
         .filter(CSCase.id == case_id)
         .first()
     )
@@ -182,32 +204,47 @@ def get_case(case_id: int, db: Session = Depends(get_db)):
 def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
     case = (
         db.query(CSCase)
-        .options(joinedload(CSCase.assignee))
+        .options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
         .filter(CSCase.id == case_id)
         .first()
     )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    old_assignee_id = case.assignee_id
+    old_assignee_ids = set(u.id for u in case.assignees)
     update_data = data.model_dump(exclude_unset=True)
+
+    # Handle assignee_ids separately from other fields
+    new_assignee_ids = update_data.pop("assignee_ids", None)
+
     for key, value in update_data.items():
         setattr(case, key, value)
+
+    # Update many-to-many assignees if provided
+    if new_assignee_ids is not None:
+        users = db.query(User).filter(User.id.in_(new_assignee_ids)).all()
+        case.assignees = users
+        # Set assignee_id to first assignee for backward compat
+        case.assignee_id = new_assignee_ids[0] if new_assignee_ids else None
+
     db.commit()
     db.refresh(case)
 
-    # 담당자가 변경된 경우 알림 생성
-    if case.assignee_id and case.assignee_id != old_assignee_id:
-        notif = Notification(
-            user_id=case.assignee_id,
-            case_id=case.id,
-            message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
-            type=NotificationType.ASSIGNEE,
-        )
-        db.add(notif)
-        db.commit()
+    # Send notifications to newly added assignees
+    if new_assignee_ids is not None:
+        added_ids = set(new_assignee_ids) - old_assignee_ids
+        for uid in added_ids:
+            notif = Notification(
+                user_id=uid,
+                case_id=case.id,
+                message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
+                type=NotificationType.ASSIGNEE,
+            )
+            db.add(notif)
+        if added_ids:
+            db.commit()
 
-    # Reload with assignee for response
+    # Reload with assignees for response
     db.refresh(case)
     return case
 
@@ -222,7 +259,7 @@ def update_case_status(
     """Update case status. Only assignee or ADMIN can change status."""
     case = (
         db.query(CSCase)
-        .options(joinedload(CSCase.assignee))
+        .options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
         .filter(CSCase.id == case_id)
         .first()
     )
@@ -230,7 +267,7 @@ def update_case_status(
         raise HTTPException(status_code=404, detail="Case not found")
 
     # Permission check
-    is_assignee = case.assignee_id == current_user.id
+    is_assignee = current_user in case.assignees
     is_admin = current_user.role == UserRole.ADMIN
     if not (is_assignee or is_admin):
         raise HTTPException(status_code=403, detail="Permission denied")
@@ -250,12 +287,17 @@ def delete_case(
     current_user: User = Depends(get_current_user),
 ):
     """Delete a case. Only assignee or ADMIN can delete."""
-    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    case = (
+        db.query(CSCase)
+        .options(joinedload(CSCase.assignees))
+        .filter(CSCase.id == case_id)
+        .first()
+    )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
     # Permission check: assignee or ADMIN
-    is_assignee = case.assignee_id == current_user.id
+    is_assignee = current_user in case.assignees
     is_admin = current_user.role == UserRole.ADMIN
     if not (is_assignee or is_admin):
         raise HTTPException(status_code=403, detail="Permission denied")

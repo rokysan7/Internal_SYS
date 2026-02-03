@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createCase, getSimilarCases, getAssignees } from '../api/cases';
 import { getAllProducts, getProductLicenses } from '../api/products';
+import { useAuth } from '../contexts/AuthContext';
 import useDebounce from '../hooks/useDebounce';
 
 /**
@@ -9,9 +10,10 @@ import useDebounce from '../hooks/useDebounce';
  */
 export default function CaseForm() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState({
     title: '', content: '', requester: '', priority: 'MEDIUM',
-    product_id: '', license_id: '', assignee_id: '', tags: '',
+    product_id: '', license_id: '', assignee_ids: [], tags: '',
   });
   const [products, setProducts] = useState([]);
   const [licenses, setLicenses] = useState([]);
@@ -29,7 +31,9 @@ export default function CaseForm() {
   const debouncedTitle = useDebounce(form.title, 500);
 
   useEffect(() => {
-    // Fetch all products (no pagination)
+    if (user?.name) {
+      setForm((prev) => ({ ...prev, requester: user.name }));
+    }
     getAllProducts().then((res) => setProducts(res.data)).catch(() => {});
     getAssignees().then((res) => setAssignees(res.data)).catch(() => {});
   }, []);
@@ -98,7 +102,7 @@ export default function CaseForm() {
         ...form,
         product_id: form.product_id ? Number(form.product_id) : null,
         license_id: form.license_id ? Number(form.license_id) : null,
-        assignee_id: form.assignee_id ? Number(form.assignee_id) : null,
+        assignee_ids: form.assignee_ids,
         tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       };
       const res = await createCase(payload);
@@ -158,8 +162,8 @@ export default function CaseForm() {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Requester *</label>
-              <input name="requester" value={form.requester} onChange={handleChange} required />
+              <label>Requester</label>
+              <input name="requester" value={form.requester} readOnly style={{ backgroundColor: '#f1f5f9', cursor: 'default' }} />
             </div>
             <div className="form-group">
               <label>Priority</label>
@@ -172,13 +176,38 @@ export default function CaseForm() {
           </div>
 
           <div className="form-group">
-            <label>Assignee</label>
-            <select name="assignee_id" value={form.assignee_id} onChange={handleChange}>
-              <option value="">-- Not assigned --</option>
-              {assignees.map((u) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-              ))}
-            </select>
+            <label>Assignees</label>
+            <div className="multi-select-wrap">
+              {form.assignee_ids.length > 0 && (
+                <div className="selected-tags">
+                  {form.assignee_ids.map((id) => {
+                    const u = assignees.find((a) => a.id === id);
+                    return (
+                      <span key={id} className="selected-tag">
+                        {u?.name || `#${id}`}
+                        <button type="button" onClick={() => setForm((prev) => ({
+                          ...prev, assignee_ids: prev.assignee_ids.filter((aid) => aid !== id),
+                        }))}>×</button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              <select
+                value=""
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  if (id && !form.assignee_ids.includes(id)) {
+                    setForm((prev) => ({ ...prev, assignee_ids: [...prev.assignee_ids, id] }));
+                  }
+                }}
+              >
+                <option value="">-- Add assignee --</option>
+                {assignees.filter((u) => !form.assignee_ids.includes(u.id)).map((u) => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="form-row">

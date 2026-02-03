@@ -1,4 +1,19 @@
 /* ===== ProductPage Specific Styles ===== */
 
-/* Product search panel uses shared styles */
-/* Add product-specific overrides here if needed */
+/* License row clickable */
+.license-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.license-row:hover {
+  background-color: #f1f5f9;
+}
+
+.license-row.selected {
+  background-color: #e0f2fe;
+}
+
+.license-row.selected:hover {
+  background-color: #bae6fd;
+}
