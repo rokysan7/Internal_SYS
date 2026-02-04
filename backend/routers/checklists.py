@@ -19,6 +19,7 @@ router = APIRouter(tags=["Checklists"])
     response_model=List[ChecklistRead],
 )
 def list_checklists(case_id: int, db: Session = Depends(get_db)):
+    """List all checklist items for a case."""
     case = db.query(CSCase).filter(CSCase.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -35,6 +36,7 @@ def create_checklist(
     data: ChecklistCreate,
     db: Session = Depends(get_db),
 ):
+    """Create a new checklist item for a case."""
     case = db.query(CSCase).filter(CSCase.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -51,6 +53,7 @@ def update_checklist(
     data: ChecklistUpdate,
     db: Session = Depends(get_db),
 ):
+    """Toggle checklist item completion status."""
     checklist = db.query(Checklist).filter(Checklist.id == checklist_id).first()
     if not checklist:
         raise HTTPException(status_code=404, detail="Checklist not found")

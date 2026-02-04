@@ -3,20 +3,22 @@ CS Case CRUD 라우터.
 """
 
 from datetime import datetime
+from math import ceil
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import CaseStatus, CSCase, case_assignees, Notification, NotificationType, User, UserRole
+from models import CaseStatus, CSCase, User, UserRole
 from routers.auth import get_current_user
-from math import ceil
 from schemas import (
     CaseCreate, CaseRead, CaseListResponse, CaseStatusUpdate, CaseSimilarRead, CaseUpdate,
     StatByAssignee, StatByStatus, StatByTime,
 )
+from services.statistics import stat_by_assignee, stat_by_status, stat_by_time
+from tasks import notify_case_assigned
 
 router = APIRouter(prefix="/cases", tags=["CS Cases"])
 
@@ -25,7 +27,9 @@ router = APIRouter(prefix="/cases", tags=["CS Cases"])
 def get_similar_cases(
     query: str = Query(..., description="검색 쿼리 (제목/내용 기반)"),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
+    """Search for similar cases by title or content keyword match."""
     results = (
         db.query(CSCase)
         .filter(
@@ -50,7 +54,9 @@ def list_cases(
     product_id: Optional[int] = None,
     requester: Optional[str] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
+    """List cases with pagination and optional filters (status, assignee, product, requester)."""
     q = db.query(CSCase).options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
     if status:
         q = q.filter(CSCase.status == status)
@@ -76,7 +82,12 @@ def list_cases(
 
 
 @router.post("/", response_model=CaseRead, status_code=201)
-def create_case(data: CaseCreate, db: Session = Depends(get_db)):
+def create_case(
+    data: CaseCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Create a new CS case with optional assignees. Sends notification to assignees."""
     case_data = data.model_dump(exclude={"assignee_ids"})
     assignee_ids = data.assignee_ids or []
 
@@ -96,17 +107,9 @@ def create_case(data: CaseCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(case)
 
-    # Send notifications to ALL assignees
-    for uid in assignee_ids:
-        notif = Notification(
-            user_id=uid,
-            case_id=case.id,
-            message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
-            type=NotificationType.ASSIGNEE,
-        )
-        db.add(notif)
+    # Send notifications to ALL assignees (async)
     if assignee_ids:
-        db.commit()
+        notify_case_assigned.delay(case.id, assignee_ids)
 
     return case
 
@@ -118,77 +121,26 @@ def create_case(data: CaseCreate, db: Session = Depends(get_db)):
 def get_statistics(
     by: str = Query(..., description="assignee | status | time"),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     """통계 조회 (by: assignee, status, time)"""
     if by == "assignee":
-        return _stat_by_assignee(db)
+        return stat_by_assignee(db)
     elif by == "status":
-        return _stat_by_status(db)
+        return stat_by_status(db)
     elif by == "time":
-        return _stat_by_time(db)
+        return stat_by_time(db)
     else:
-        raise HTTPException(status_code=400, detail="by 파라미터는 assignee, status, time 중 하나여야 합니다.")
-
-
-def _stat_by_assignee(db: Session) -> List[StatByAssignee]:
-    """담당자별 미처리/처리중/완료 건수 (many-to-many)."""
-    users = db.query(User).all()
-    results = []
-    for user in users:
-        cases = (
-            db.query(CSCase)
-            .filter(CSCase.assignees.any(User.id == user.id))
-            .all()
-        )
-        open_count = sum(1 for c in cases if c.status == CaseStatus.OPEN)
-        in_progress = sum(1 for c in cases if c.status == CaseStatus.IN_PROGRESS)
-        done = sum(1 for c in cases if c.status == CaseStatus.DONE)
-        if open_count + in_progress + done > 0:
-            results.append(
-                StatByAssignee(
-                    assignee_id=user.id,
-                    assignee_name=user.name,
-                    open_count=open_count,
-                    in_progress_count=in_progress,
-                    done_count=done,
-                )
-            )
-    return results
-
-
-def _stat_by_status(db: Session) -> List[StatByStatus]:
-    """상태별 건수."""
-    rows = (
-        db.query(CSCase.status, func.count(CSCase.id))
-        .group_by(CSCase.status)
-        .all()
-    )
-    return [StatByStatus(status=row[0], count=row[1]) for row in rows]
-
-
-def _stat_by_time(db: Session) -> StatByTime:
-    """평균 처리 시간 (완료된 케이스 기준)."""
-    completed = (
-        db.query(CSCase)
-        .filter(
-            CSCase.status == CaseStatus.DONE,
-            CSCase.completed_at.isnot(None),
-        )
-        .all()
-    )
-    total = len(completed)
-    if total == 0:
-        return StatByTime(avg_hours=None, total_completed=0)
-
-    total_hours = sum(
-        (c.completed_at - c.created_at).total_seconds() / 3600
-        for c in completed
-    )
-    return StatByTime(avg_hours=round(total_hours / total, 2), total_completed=total)
+        raise HTTPException(status_code=400, detail="'by' parameter must be one of: assignee, status, time")
 
 
 @router.get("/{case_id}", response_model=CaseRead)
-def get_case(case_id: int, db: Session = Depends(get_db)):
+def get_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Get a single case by ID with assignee details."""
     case = (
         db.query(CSCase)
         .options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
@@ -201,7 +153,13 @@ def get_case(case_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{case_id}", response_model=CaseRead)
-def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
+def update_case(
+    case_id: int,
+    data: CaseUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Update case fields. Sends notification to newly added assignees."""
     case = (
         db.query(CSCase)
         .options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
@@ -230,22 +188,12 @@ def update_case(case_id: int, data: CaseUpdate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(case)
 
-    # Send notifications to newly added assignees
+    # Send notifications to newly added assignees (async)
     if new_assignee_ids is not None:
         added_ids = set(new_assignee_ids) - old_assignee_ids
-        for uid in added_ids:
-            notif = Notification(
-                user_id=uid,
-                case_id=case.id,
-                message=f"CS Case #{case.id} '{case.title}' 담당으로 배정되었습니다.",
-                type=NotificationType.ASSIGNEE,
-            )
-            db.add(notif)
         if added_ids:
-            db.commit()
+            notify_case_assigned.delay(case.id, list(added_ids))
 
-    # Reload with assignees for response
-    db.refresh(case)
     return case
 
 

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUser } from '../../api/admin';
+import { ROLES, ROLE_LIST } from '../../constants/roles';
 import './AdminPages.css';
-
-const ROLES = ['CS', 'ENGINEER', 'ADMIN'];
 
 export default function UserCreatePage() {
   const navigate = useNavigate();
@@ -12,7 +11,7 @@ export default function UserCreatePage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'CS',
+    role: ROLES.CS,
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,7 +121,7 @@ export default function UserCreatePage() {
             onChange={handleChange}
             disabled={isSubmitting}
           >
-            {ROLES.map((r) => (
+            {ROLE_LIST.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>

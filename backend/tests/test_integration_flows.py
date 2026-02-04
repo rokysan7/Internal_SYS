@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 
-def test_full_case_lifecycle(client, test_user, assignee_user):
+def test_full_case_lifecycle(client, assignee_user):
     """Product → License → Case → Comment → Checklist → DONE 전체 흐름."""
     # 1. Product 생성
     prod = client.post("/products/", json={"name": "Lifecycle Product"}).json()
@@ -21,7 +21,7 @@ def test_full_case_lifecycle(client, test_user, assignee_user):
         "product_id": prod["id"],
         "license_id": lic["id"],
         "requester": "Customer",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
         "priority": "HIGH",
         "tags": ["lifecycle"],
     }).json()
@@ -54,13 +54,13 @@ def test_full_case_lifecycle(client, test_user, assignee_user):
     assert done_resp.json()["completed_at"] is not None
 
 
-def test_assignment_notification_flow(client, test_user, assignee_user, sample_product):
+def test_assignment_notification_flow(client, assignee_user, sample_product):
     """케이스 배정 → 알림 생성 → 읽음 처리 플로우."""
     client.post("/cases/", json={
         "title": "Notify Flow",
         "content": "C",
         "requester": "Cust",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
         "product_id": sample_product["id"],
     })
 
@@ -93,10 +93,9 @@ def test_comment_notification_trigger(client, sample_case, assignee_user):
         mock_delay.assert_called_once()
         args = mock_delay.call_args[0]
         assert args[0] == sample_case["id"]  # case_id
-        assert args[1] == 1                  # author_id (hardcoded)
 
 
-def test_memo_create_read_flow(client, test_user, sample_product, sample_license):
+def test_memo_create_read_flow(client, sample_product, sample_license):
     """Product Memo + License Memo 생성 → 조회 플로우."""
     # Product memo
     client.post(
@@ -117,19 +116,19 @@ def test_memo_create_read_flow(client, test_user, sample_product, sample_license
     assert l_memos[0]["content"] == "라이선스 관련 메모"
 
 
-def test_statistics_accuracy(client, test_user, assignee_user, sample_product):
+def test_statistics_accuracy(client, assignee_user, sample_product):
     """다양한 상태의 케이스 생성 → 통계 정확성 검증."""
     # OPEN 2건
     for i in range(2):
         client.post("/cases/", json={
             "title": f"Open {i}", "content": "C", "requester": "Cust",
-            "assignee_id": assignee_user.id,
+            "assignee_ids": [assignee_user.id],
         })
 
     # DONE 1건
     done_resp = client.post("/cases/", json={
         "title": "Done Case", "content": "C", "requester": "Cust",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
     })
     client.patch(f"/cases/{done_resp.json()['id']}/status", json={"status": "DONE"})
 
@@ -152,7 +151,7 @@ def test_statistics_accuracy(client, test_user, assignee_user, sample_product):
     assert time_stat["avg_hours"] is not None
 
 
-def test_similar_cases_flow(client, test_user):
+def test_similar_cases_flow(client):
     """유사 케이스 검색 플로우."""
     client.post("/cases/", json={
         "title": "결제 오류 문의", "content": "카드 결제 실패", "requester": "Cust",
@@ -168,14 +167,14 @@ def test_similar_cases_flow(client, test_user):
     assert len(results) == 2
 
 
-def test_case_filter_combinations(client, test_user, assignee_user, sample_product):
+def test_case_filter_combinations(client, assignee_user, sample_product):
     """필터 조합 테스트."""
     # assignee + product 연결 케이스
     client.post("/cases/", json={
         "title": "Filter Case",
         "content": "C",
         "requester": "Cust",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
         "product_id": sample_product["id"],
     })
     # 다른 케이스
@@ -187,20 +186,20 @@ def test_case_filter_combinations(client, test_user, assignee_user, sample_produ
     by_prod = client.get(
         "/cases/", params={"product_id": sample_product["id"]}
     ).json()
-    assert len(by_prod) == 1
+    assert len(by_prod["items"]) == 1
 
     # assignee 필터
     by_assign = client.get(
         "/cases/", params={"assignee_id": assignee_user.id}
     ).json()
-    assert len(by_assign) == 1
+    assert len(by_assign["items"]) == 1
 
     # 전체
     all_cases = client.get("/cases/").json()
-    assert len(all_cases) == 2
+    assert all_cases["total"] == 2
 
 
-def test_product_license_cascade(client, test_user):
+def test_product_license_cascade(client):
     """Product → License 연쇄 조회."""
     prod = client.post("/products/", json={"name": "Multi-License Product"}).json()
     for name in ["Free", "Plus", "Pro"]:
@@ -208,7 +207,7 @@ def test_product_license_cascade(client, test_user):
 
     licenses = client.get(f"/products/{prod['id']}/licenses").json()
     assert len(licenses) == 3
-    names = {l["name"] for l in licenses}
+    names = {lic["name"] for lic in licenses}
     assert names == {"Free", "Plus", "Pro"}
 
 

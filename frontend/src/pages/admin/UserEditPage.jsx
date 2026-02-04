@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getUser, updateUser, resetPassword } from '../../api/admin';
+import { ROLES, ROLE_LIST } from '../../constants/roles';
+import Spinner from '../../components/Spinner';
 import './AdminPages.css';
-
-const ROLES = ['CS', 'ENGINEER', 'ADMIN'];
 
 export default function UserEditPage() {
   const { id } = useParams();
@@ -11,7 +11,7 @@ export default function UserEditPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'CS',
+    role: ROLES.CS,
     is_active: true,
   });
   const [newPassword, setNewPassword] = useState('');
@@ -91,7 +91,7 @@ export default function UserEditPage() {
   };
 
   if (isLoading) {
-    return <div className="admin-page"><div className="loading">Loading...</div></div>;
+    return <div className="admin-page"><Spinner /></div>;
   }
 
   return (
@@ -137,7 +137,7 @@ export default function UserEditPage() {
             onChange={handleChange}
             disabled={isSubmitting}
           >
-            {ROLES.map((r) => (
+            {ROLE_LIST.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>

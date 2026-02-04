@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCases, getStatistics } from '../api/cases';
 import { useAuth } from '../contexts/AuthContext';
+import { ROLES } from '../constants/roles';
+import Spinner from '../components/Spinner';
 import CaseList from '../components/CaseList';
 import Pagination from '../components/Pagination';
 import './shared.css';
@@ -85,7 +87,7 @@ export default function Dashboard() {
       .catch(() => {});
   }, [createdPage, user?.name]);
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <Spinner />;
 
   const countByStatus = (status) => {
     const found = statusStats.find((s) => s.status === status);
@@ -127,7 +129,7 @@ export default function Dashboard() {
       </div>
 
       {/* Assignee Statistics (ADMIN only) */}
-      {user?.role === 'ADMIN' && assigneeStats.length > 0 && (
+      {user?.role === ROLES.ADMIN && assigneeStats.length > 0 && (
         <div className="section">
           <div className="section-title">담당자별 업무 현황</div>
           <div className="card">

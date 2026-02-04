@@ -21,15 +21,19 @@ def _make_user(db, name="User", email="u@t.com", role=UserRole.CS):
     return user
 
 
-def _make_case(db, assignee_id=None, status=CaseStatus.OPEN, created_at=None):
+def _make_case(db, assignees=None, status=CaseStatus.OPEN, created_at=None):
+    """케이스 생성. assignees: User 객체 리스트 (many-to-many 관계 설정)."""
     case = CSCase(
         title="Test Case",
         content="Content",
         requester="Cust",
-        assignee_id=assignee_id,
+        assignee_id=assignees[0].id if assignees else None,
         status=status,
     )
     db.add(case)
+    db.flush()
+    if assignees:
+        case.assignees = assignees
     db.commit()
     db.refresh(case)
     if created_at:
@@ -49,7 +53,7 @@ def _make_case(db, assignee_id=None, status=CaseStatus.OPEN, created_at=None):
 def test_check_pending_creates_reminder(db_session):
     user = _make_user(db_session)
     old_time = datetime.utcnow() - timedelta(hours=25)
-    case = _make_case(db_session, assignee_id=user.id, created_at=old_time)
+    case = _make_case(db_session, assignees=[user], created_at=old_time)
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
@@ -68,7 +72,7 @@ def test_check_pending_skips_done(db_session):
     user = _make_user(db_session)
     old_time = datetime.utcnow() - timedelta(hours=25)
     _make_case(
-        db_session, assignee_id=user.id,
+        db_session, assignees=[user],
         status=CaseStatus.DONE, created_at=old_time,
     )
 
@@ -82,7 +86,7 @@ def test_check_pending_skips_done(db_session):
 
 def test_check_pending_skips_no_assignee(db_session):
     old_time = datetime.utcnow() - timedelta(hours=25)
-    _make_case(db_session, assignee_id=None, created_at=old_time)
+    _make_case(db_session, assignees=None, created_at=old_time)
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
@@ -96,7 +100,7 @@ def test_check_pending_skips_recent(db_session):
     user = _make_user(db_session)
     # 1시간 전 생성 (24시간 미만)
     recent_time = datetime.utcnow() - timedelta(hours=1)
-    _make_case(db_session, assignee_id=user.id, created_at=recent_time)
+    _make_case(db_session, assignees=[user], created_at=recent_time)
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
@@ -110,7 +114,7 @@ def test_check_pending_dedup(db_session):
     """이미 24시간 내 REMINDER가 있으면 중복 생성 안함."""
     user = _make_user(db_session)
     old_time = datetime.utcnow() - timedelta(hours=25)
-    case = _make_case(db_session, assignee_id=user.id, created_at=old_time)
+    case = _make_case(db_session, assignees=[user], created_at=old_time)
 
     # 기존 리마인더 생성
     existing = Notification(
@@ -136,7 +140,7 @@ def test_check_pending_dedup(db_session):
 def test_notify_comment_creates_notification(db_session):
     assignee = _make_user(db_session, name="Assignee", email="a@t.com")
     author = _make_user(db_session, name="Author", email="b@t.com")
-    case = _make_case(db_session, assignee_id=assignee.id)
+    case = _make_case(db_session, assignees=[assignee])
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
@@ -163,7 +167,7 @@ def test_notify_comment_skips_no_case(db_session):
 
 def test_notify_comment_skips_no_assignee(db_session):
     _make_user(db_session)  # ensure user exists
-    case = _make_case(db_session, assignee_id=None)
+    case = _make_case(db_session, assignees=None)
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
@@ -175,11 +179,45 @@ def test_notify_comment_skips_no_assignee(db_session):
 
 def test_notify_comment_skips_self(db_session):
     user = _make_user(db_session)
-    case = _make_case(db_session, assignee_id=user.id)
+    case = _make_case(db_session, assignees=[user])
 
     with patch("tasks.SessionLocal", return_value=db_session):
         with patch.object(db_session, "close"):
             from tasks import notify_comment
             result = notify_comment(case.id, user.id, "My own comment")
+
+    assert result["notified"] is False
+
+
+# ========== notify_reply ==========
+
+
+def test_notify_reply_creates_notification(db_session):
+    parent_author = _make_user(db_session, name="Parent", email="p@t.com")
+    replier = _make_user(db_session, name="Replier", email="r@t.com")
+    case = _make_case(db_session, assignees=[parent_author])
+
+    with patch("tasks.SessionLocal", return_value=db_session):
+        with patch.object(db_session, "close"):
+            from tasks import notify_reply
+            result = notify_reply(case.id, parent_author.id, replier.name, replier.id)
+
+    assert result["notified"] is True
+    notif = db_session.query(Notification).filter(
+        Notification.case_id == case.id,
+        Notification.type == NotificationType.COMMENT,
+        Notification.user_id == parent_author.id,
+    ).first()
+    assert notif is not None
+
+
+def test_notify_reply_skips_self(db_session):
+    user = _make_user(db_session)
+    case = _make_case(db_session, assignees=[user])
+
+    with patch("tasks.SessionLocal", return_value=db_session):
+        with patch.object(db_session, "close"):
+            from tasks import notify_reply
+            result = notify_reply(case.id, user.id, user.name, user.id)
 
     assert result["notified"] is False

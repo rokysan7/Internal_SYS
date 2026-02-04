@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getNotifications, markAsRead } from '../api/notifications';
+import { ROLES } from '../constants/roles';
 import './Layout.css';
 
 const POLL_INTERVAL = 30_000; // 30초 주기 fetch
@@ -101,7 +102,7 @@ export default function Layout() {
             <span className="nav-icon">📦</span>
             Products
           </NavLink>
-          {user?.role === 'ADMIN' && (
+          {user?.role === ROLES.ADMIN && (
             <>
               <div className="nav-divider" />
               <NavLink to="/admin/users">

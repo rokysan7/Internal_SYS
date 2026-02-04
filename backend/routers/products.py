@@ -26,6 +26,7 @@ def list_products(
     order: str = Query("asc", description="정렬 순서: asc, desc"),
     db: Session = Depends(get_db),
 ):
+    """List products with pagination, search, and sorting."""
     query = db.query(Product)
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
@@ -54,7 +55,12 @@ def list_products(
 
 
 @router.post("/", response_model=ProductRead, status_code=201)
-def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    data: ProductCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Create a new product."""
     product = Product(**data.model_dump())
     db.add(product)
     db.commit()
@@ -66,6 +72,7 @@ def create_product(data: ProductCreate, db: Session = Depends(get_db)):
 async def bulk_upload_products(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     """CSV 파일로 Product + License 일괄 등록.
 
@@ -76,9 +83,14 @@ async def bulk_upload_products(
     DALL-E,Basic
     """
     if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="CSV 파일만 지원합니다.")
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
 
     content = await file.read()
+
+    # File size limit: 5MB
+    max_size = 5 * 1024 * 1024
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
     try:
         decoded = content.decode("utf-8")
     except UnicodeDecodeError:
@@ -88,7 +100,7 @@ async def bulk_upload_products(
     if not {"product", "license"}.issubset(set(reader.fieldnames or [])):
         raise HTTPException(
             status_code=400,
-            detail="CSV 헤더에 'product', 'license' 컬럼이 필요합니다.",
+            detail="CSV header must include 'product' and 'license' columns",
         )
 
     products_created = 0
@@ -101,12 +113,17 @@ async def bulk_upload_products(
     product_cache: dict[str, Product] = {}
     seen_licenses: set[tuple[str, str]] = set()
 
+    max_rows = 10000
     for row_num, row in enumerate(reader, start=2):
+        if row_num - 1 > max_rows:
+            errors.append(f"Row limit exceeded: only first {max_rows} rows are processed")
+            break
+
         product_name = row.get("product", "").strip()
         license_name = row.get("license", "").strip()
 
         if not product_name or not license_name:
-            errors.append(f"Row {row_num}: product 또는 license 값이 비어있음")
+            errors.append(f"Row {row_num}: product or license value is empty")
             continue
 
         # 배치 내 (product, license) 중복 스킵
@@ -162,6 +179,7 @@ def list_all_products(db: Session = Depends(get_db)):
 
 @router.get("/{product_id}", response_model=ProductRead)
 def get_product(product_id: int, db: Session = Depends(get_db)):
+    """Get a single product by ID."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -191,6 +209,7 @@ def update_product(
 
 @router.get("/{product_id}/licenses", response_model=List[LicenseRead])
 def get_product_licenses(product_id: int, db: Session = Depends(get_db)):
+    """List all licenses belonging to a product."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")

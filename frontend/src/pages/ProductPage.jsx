@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { getProductLicenses, deleteProduct, updateProduct } from '../api/products';
-import { deleteLicense } from '../api/licenses';
+import { useState, useCallback } from 'react';
+import { getProductLicenses, deleteProduct } from '../api/products';
 import { getProductMemos, getLicenseMemos } from '../api/memos';
 import { useAuth } from '../contexts/AuthContext';
 import ProductSearch from '../components/ProductSearch';
 import ProductCreateForm from '../components/ProductCreateForm';
 import BulkUploadForm from '../components/BulkUploadForm';
+import ProductDetailCard from '../components/ProductDetailCard';
+import LicenseListCard from '../components/LicenseListCard';
 import MemoList from '../components/MemoList';
-import { formatDate } from '../components/utils';
 import './shared.css';
 import './ProductPage.css';
 
@@ -20,15 +20,10 @@ export default function ProductPage() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [deleting, setDeleting] = useState(false);
-  const [deletingLicenseId, setDeletingLicenseId] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [saving, setSaving] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState(null);
   const [licenseMemos, setLicenseMemos] = useState([]);
 
-  const handleSelect = async (product) => {
+  const handleSelect = useCallback(async (product) => {
     setSelected(product);
     setSelectedLicense(null);
     setLicenseMemos([]);
@@ -41,112 +36,80 @@ export default function ProductPage() {
       setMemos(memoRes.data);
     } catch (err) {
       console.error('Product detail fetch failed:', err);
+      alert(err.response?.data?.detail || 'Failed to load product details');
     }
-  };
+  }, []);
 
-  const handleSelectLicense = async (lic) => {
-    if (selectedLicense?.id === lic.id) {
-      setSelectedLicense(null);
+  const handleSelectLicense = useCallback(async (lic) => {
+    let deselecting = false;
+    setSelectedLicense((prev) => {
+      if (prev?.id === lic.id) {
+        deselecting = true;
+        return null;
+      }
+      return lic;
+    });
+    if (deselecting) {
       setLicenseMemos([]);
       return;
     }
-    setSelectedLicense(lic);
     try {
       const res = await getLicenseMemos(lic.id);
       setLicenseMemos(res.data);
     } catch (err) {
       console.error('License memo fetch failed:', err);
+      alert(err.response?.data?.detail || 'Failed to load license memos');
     }
-  };
+  }, []);
 
-  const handleLicenseMemoAdded = (newMemo) => {
-    setLicenseMemos((prev) => [...prev, newMemo]);
-  };
-
-  const handleLicenseMemoDeleted = (memoId) => {
-    setLicenseMemos((prev) => prev.filter((m) => m.id !== memoId));
-  };
-
-  const handleMemoAdded = (newMemo) => {
-    setMemos((prev) => [...prev, newMemo]);
-  };
-
-  const handleMemoDeleted = (memoId) => {
-    setMemos((prev) => prev.filter((m) => m.id !== memoId));
-  };
-
-  const handleDeleteLicense = async (lic) => {
-    if (!window.confirm(`Delete license "${lic.name}"? This will also delete all memos.`)) return;
-    setDeletingLicenseId(lic.id);
-    try {
-      await deleteLicense(lic.id);
-      setLicenses((prev) => prev.filter((l) => l.id !== lic.id));
-      if (selectedLicense?.id === lic.id) {
-        setSelectedLicense(null);
-        setLicenseMemos([]);
-      }
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Delete failed';
-      alert(msg);
-    } finally {
-      setDeletingLicenseId(null);
-    }
-  };
-
-  const handleBulkUploaded = () => {
-    setShowBulkUpload(false);
+  const handleProductUpdated = useCallback((updatedProduct) => {
+    setSelected(updatedProduct);
     setRefreshKey((k) => k + 1);
-  };
+  }, []);
 
-  const handleStartEdit = () => {
-    setEditName(selected.name);
-    setEditDescription(selected.description || '');
-    setEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setEditing(false);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editName.trim()) {
-      alert('Name is required');
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await updateProduct(selected.id, {
-        name: editName.trim(),
-        description: editDescription.trim() || null,
-      });
-      setSelected(res.data);
-      setEditing(false);
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Update failed';
-      alert(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selected) return;
-    if (!window.confirm(`Delete "${selected.name}"? This will also delete all licenses and memos.`)) return;
+  const handleDelete = useCallback(async (product) => {
+    if (!product) return;
+    if (!window.confirm(`Delete "${product.name}"? This will also delete all licenses and memos.`)) return;
     setDeleting(true);
     try {
-      await deleteProduct(selected.id);
+      await deleteProduct(product.id);
       setSelected(null);
       setLicenses([]);
       setMemos([]);
       setRefreshKey((k) => k + 1);
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Delete failed';
-      alert(msg);
+      alert(err.response?.data?.detail || 'Delete failed');
     } finally {
       setDeleting(false);
     }
-  };
+  }, []);
+
+  const handleLicenseDeleted = useCallback((licenseId) => {
+    setLicenses((prev) => prev.filter((l) => l.id !== licenseId));
+    setSelectedLicense((prev) => {
+      if (prev?.id === licenseId) {
+        setLicenseMemos([]);
+        return null;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleMemoAdded = useCallback((newMemo) => {
+    setMemos((prev) => [...prev, newMemo]);
+  }, []);
+
+  const handleMemoDeleted = useCallback((memoId) => {
+    setMemos((prev) => prev.filter((m) => m.id !== memoId));
+  }, []);
+
+  const handleLicenseMemoAdded = useCallback((newMemo) => {
+    setLicenseMemos((prev) => [...prev, newMemo]);
+  }, []);
+
+  const handleLicenseMemoDeleted = useCallback((memoId) => {
+    setLicenseMemos((prev) => prev.filter((m) => m.id !== memoId));
+  }, []);
 
   return (
     <div>
@@ -164,7 +127,7 @@ export default function ProductPage() {
 
       {showBulkUpload && (
         <BulkUploadForm
-          onUploaded={handleBulkUploaded}
+          onUploaded={() => { setShowBulkUpload(false); setRefreshKey((k) => k + 1); }}
           onCancel={() => setShowBulkUpload(false)}
         />
       )}
@@ -177,10 +140,8 @@ export default function ProductPage() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.25rem' }}>
-        {/* Product Search Panel */}
         <ProductSearch onSelect={handleSelect} selectedId={selected?.id ?? null} refreshKey={refreshKey} />
 
-        {/* Product Detail Panel */}
         <div>
           {!selected ? (
             <div className="card">
@@ -188,69 +149,14 @@ export default function ProductPage() {
             </div>
           ) : (
             <>
-              {/* Product Info */}
-              <div className="card" style={{ marginBottom: '1.25rem' }}>
-                {editing ? (
-                  <>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Name</label>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: 6 }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Description</label>
-                      <textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        rows={3}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: 6, resize: 'vertical' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-primary btn-sm" onClick={handleSaveEdit} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save'}
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={handleCancelEdit} disabled={saving}>
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div className="section-title">{selected.name}</div>
-                      {user?.role === 'ADMIN' && (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button className="btn btn-secondary btn-sm" onClick={handleStartEdit}>
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={handleDelete}
-                            disabled={deleting}
-                          >
-                            {deleting ? 'Deleting...' : 'Delete'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {selected.description && (
-                      <p style={{ fontSize: '0.9rem', color: '#475569', marginBottom: '0.75rem' }}>
-                        {selected.description}
-                      </p>
-                    )}
-                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                      Created: {formatDate(selected.created_at)}
-                    </div>
-                  </>
-                )}
-              </div>
+              <ProductDetailCard
+                product={selected}
+                user={user}
+                onUpdated={handleProductUpdated}
+                deleting={deleting}
+                onDelete={() => handleDelete(selected)}
+              />
 
-              {/* Product Memos */}
               <MemoList
                 title="Product Memos"
                 memos={memos}
@@ -261,55 +167,14 @@ export default function ProductPage() {
                 onMemoDeleted={handleMemoDeleted}
               />
 
-              {/* Licenses */}
-              <div className="card" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
-                <div className="section-title">Licenses ({licenses.length})</div>
-                {licenses.length === 0 ? (
-                  <div className="empty-state">No licenses registered.</div>
-                ) : (
-                  <div className="table-wrap" style={{ border: 'none' }}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Name</th>
-                          <th>Description</th>
-                          <th>Created</th>
-                          {user?.role === 'ADMIN' && <th>Actions</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {licenses.map((lic) => (
-                          <tr
-                            key={lic.id}
-                            onClick={() => handleSelectLicense(lic)}
-                            className={`license-row${selectedLicense?.id === lic.id ? ' selected' : ''}`}
-                          >
-                            <td>#{lic.id}</td>
-                            <td>{lic.name}</td>
-                            <td>{lic.description || '-'}</td>
-                            <td>{formatDate(lic.created_at)}</td>
-                            {user?.role === 'ADMIN' && (
-                              <td>
-                                <button
-                                  className="btn btn-danger btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteLicense(lic); }}
-                                  disabled={deletingLicenseId === lic.id}
-                                  style={{ padding: '2px 8px', fontSize: '0.75rem' }}
-                                >
-                                  {deletingLicenseId === lic.id ? '...' : 'Delete'}
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <LicenseListCard
+                licenses={licenses}
+                user={user}
+                selectedLicense={selectedLicense}
+                onSelect={handleSelectLicense}
+                onDeleted={handleLicenseDeleted}
+              />
 
-              {/* Selected License Detail (inline) */}
               {selectedLicense && (
                 <MemoList
                   title={`${selectedLicense.name} Memos`}

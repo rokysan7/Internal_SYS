@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ROLES } from '../../constants/roles';
 import {
   getCase,
   deleteCase,
@@ -12,6 +13,7 @@ import {
   updateChecklist,
 } from '../../api/cases';
 import { useAuth } from '../../contexts/AuthContext';
+import Spinner from '../Spinner';
 import { statusBadgeClass, statusLabel } from '../utils';
 
 import DescriptionCard from './DescriptionCard';
@@ -75,6 +77,7 @@ export default function CaseDetail({ caseId }) {
       setCaseData((prev) => ({ ...prev, status: newStatus }));
     } catch (err) {
       console.error('Status update failed:', err);
+      alert(err.response?.data?.detail || 'Failed to update status');
     }
   };
 
@@ -92,6 +95,7 @@ export default function CaseDetail({ caseId }) {
       setNewComment('');
     } catch (err) {
       console.error('Comment creation failed:', err);
+      alert(err.response?.data?.detail || 'Failed to add comment');
     }
   };
 
@@ -115,6 +119,7 @@ export default function CaseDetail({ caseId }) {
       setNewCheckItem('');
     } catch (err) {
       console.error('Checklist creation failed:', err);
+      alert(err.response?.data?.detail || 'Failed to add checklist item');
     }
   };
 
@@ -126,10 +131,11 @@ export default function CaseDetail({ caseId }) {
       );
     } catch (err) {
       console.error('Checklist toggle failed:', err);
+      alert(err.response?.data?.detail || 'Failed to update checklist');
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <Spinner />;
   if (!caseData) return <div className="empty-state">Case not found.</div>;
 
   return (
@@ -143,7 +149,7 @@ export default function CaseDetail({ caseId }) {
             {statusLabel(caseData.status)}
           </span>
         </div>
-        {(user?.role === 'ADMIN' || user?.id === caseData.assignee_id) && (
+        {(user?.role === ROLES.ADMIN || user?.id === caseData.assignee_id) && (
           <button
             className="btn btn-danger"
             onClick={handleDelete}

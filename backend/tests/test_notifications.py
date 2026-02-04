@@ -47,13 +47,13 @@ def test_mark_as_read_not_found(client):
     assert resp.status_code == 404
 
 
-def test_notification_on_case_creation(client, test_user, assignee_user, sample_product):
+def test_notification_on_case_creation(client, assignee_user, sample_product):
     """케이스 생성 → 담당자 알림 → unread 카운트 확인."""
     client.post("/cases/", json={
         "title": "Badge Test",
         "content": "Content",
         "requester": "Cust",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
         "product_id": sample_product["id"],
     })
     unread = client.get(
@@ -64,14 +64,14 @@ def test_notification_on_case_creation(client, test_user, assignee_user, sample_
     assert unread[0]["type"] == "ASSIGNEE"
 
 
-def test_notification_badge_count(client, test_user, assignee_user, sample_product):
+def test_notification_badge_count(client, assignee_user):
     """여러 케이스 생성 → unread 카운트 정확성."""
     for i in range(3):
         client.post("/cases/", json={
             "title": f"Case {i}",
             "content": "Content",
             "requester": "Cust",
-            "assignee_id": assignee_user.id,
+            "assignee_ids": [assignee_user.id],
         })
     unread = client.get(
         "/notifications/",

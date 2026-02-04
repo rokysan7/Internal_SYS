@@ -6,10 +6,40 @@ const client = axios.create({
   baseURL: API_BASE,
 });
 
-// JWT 토큰 자동 첨부
+/**
+ * Decode JWT payload without external library.
+ * Returns null if the token is malformed.
+ */
+function decodeJwtPayload(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a JWT token is expired (with 30-second buffer).
+ */
+function isTokenExpired(token) {
+  const payload = decodeJwtPayload(token);
+  if (!payload || !payload.exp) return false;
+  return payload.exp * 1000 < Date.now() - 30_000;
+}
+
+// JWT token auto-attach with client-side expiry check
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
+    if (isTokenExpired(token)) {
+      localStorage.removeItem('access_token');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      return Promise.reject(new axios.Cancel('Token expired'));
+    }
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

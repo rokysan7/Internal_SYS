@@ -1,6 +1,6 @@
 # CS Case Management Dashboard
 
-> **Version**: v1.1.0
+> **Version**: v1.2.0
 
 사내 고객지원(CS) 케이스를 관리하는 내부 운영 시스템. 제품/라이선스별 CS 케이스 추적, 댓글·체크리스트 협업, 알림, 업무 통계 기능을 제공한다.
 
@@ -263,6 +263,16 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 - **30초 폴링 알림 Badge**: 실시간에 준하는 미읽음 알림 표시
 
 ## Changelog
+
+### v1.2.0 (2026-02-04)
+- **Static Analysis 전체 수행**: 26개 항목 점검 완료 (5 Phase)
+- **Backend 구조 개선**: dead code 제거, statistics 서비스 분리, validation 통합, Celery M2M 알림 수정
+- **Backend 보안 강화**: 전 엔드포인트 인증 적용, CSV 업로드 크기/행수 제한, 에러 메시지 영문 통일
+- **Backend 테스트**: 87개 → 115개 테스트, 커버리지 55% → 92%, 전 엔드포인트 docstring 추가
+- **Frontend 컴포넌트 분리**: ProductDetailCard, LicenseListCard, ProductSearchDropdown, SimilarCasesWidget, Spinner
+- **Frontend 품질 개선**: role 상수 중앙화, CSS 모듈 분리, error handling 통일, a11y 개선
+- **Frontend 성능**: React.lazy 코드 스플리팅, React.memo/useCallback 적용, JWT 만료 클라이언트 체크
+- **개발 규칙 수립**: CLAUDE.md에 Backend/Frontend 코딩 규칙 추가
 
 ### v1.1.0 (2026-02-03)
 - **Products 페이지 개선**: 라이선스 인라인 상세 표시, 별도 라이선스 페이지 제거

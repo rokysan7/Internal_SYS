@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ROLES } from '../../constants/roles';
 import { formatDate } from '../utils';
 
 /**
@@ -22,7 +23,7 @@ function CommentItem({ comment, depth = 0, onReply, onDelete, currentUser }) {
 
   const authorName = comment.author?.name || `User #${comment.author_id}`;
   const canDelete = currentUser && (
-    currentUser.id === comment.author_id || currentUser.role === 'ADMIN'
+    currentUser.id === comment.author_id || currentUser.role === ROLES.ADMIN
   );
 
   return (

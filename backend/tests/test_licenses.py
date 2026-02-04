@@ -13,7 +13,7 @@ def test_create_license(client, sample_product):
     assert data["product_id"] == sample_product["id"]
 
 
-def test_create_license_invalid_product(client, test_user):
+def test_create_license_invalid_product(client):
     resp = client.post("/licenses/", json={
         "name": "Invalid",
         "product_id": 99999,
@@ -32,7 +32,7 @@ def test_get_license_not_found(client):
     assert resp.status_code == 404
 
 
-def test_create_license_memo(client, test_user, sample_license):
+def test_create_license_memo(client, sample_license):
     resp = client.post(
         f"/licenses/{sample_license['id']}/memos",
         json={"content": "라이선스 메모"},
@@ -43,7 +43,7 @@ def test_create_license_memo(client, test_user, sample_license):
     assert data["license_id"] == sample_license["id"]
 
 
-def test_list_license_memos(client, test_user, sample_license):
+def test_list_license_memos(client, sample_license):
     client.post(f"/licenses/{sample_license['id']}/memos", json={"content": "Memo A"})
     client.post(f"/licenses/{sample_license['id']}/memos", json={"content": "Memo B"})
     resp = client.get(f"/licenses/{sample_license['id']}/memos")
@@ -51,6 +51,41 @@ def test_list_license_memos(client, test_user, sample_license):
     assert len(resp.json()) == 2
 
 
-def test_create_license_memo_not_found(client, test_user):
+def test_create_license_memo_not_found(client):
     resp = client.post("/licenses/99999/memos", json={"content": "memo"})
     assert resp.status_code == 404
+
+
+def test_update_license(client, sample_license):
+    resp = client.put(f"/licenses/{sample_license['id']}", json={
+        "name": "Updated License",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Updated License"
+
+
+def test_update_license_not_found(client):
+    resp = client.put("/licenses/99999", json={"name": "X"})
+    assert resp.status_code == 404
+
+
+def test_delete_license(client, sample_product):
+    """케이스 미연결 라이선스 삭제."""
+    lic = client.post("/licenses/", json={
+        "name": "Deletable",
+        "product_id": sample_product["id"],
+    }).json()
+    resp = client.delete(f"/licenses/{lic['id']}")
+    assert resp.status_code == 204
+
+
+def test_delete_license_not_found(client):
+    resp = client.delete("/licenses/99999")
+    assert resp.status_code == 404
+
+
+def test_delete_license_linked_to_case(client, sample_case, sample_license):
+    """케이스에 연결된 라이선스는 삭제 불가."""
+    resp = client.delete(f"/licenses/{sample_license['id']}")
+    assert resp.status_code == 400
+    assert "Cannot delete" in resp.json()["detail"]

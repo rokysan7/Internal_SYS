@@ -5,6 +5,7 @@ import CaseList from '../components/CaseList';
 import CaseDetail from '../components/CaseDetail';
 import CaseForm from '../components/CaseForm';
 import Pagination from '../components/Pagination';
+import Spinner from '../components/Spinner';
 import './shared.css';
 import './CasePage.css';
 
@@ -79,7 +80,7 @@ function CaseListView() {
     return true;
   });
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <Spinner />;
 
   return (
     <div>

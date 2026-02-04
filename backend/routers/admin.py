@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, UserRole
 from routers.auth import get_current_user, pwd_context, require_role
+from validators import validate_password
 from schemas import (
     PasswordReset,
     UserCreate,
@@ -19,15 +20,6 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
-
-
-def validate_password(password: str) -> None:
-    """Validate password meets minimum requirements."""
-    if len(password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long",
-        )
 
 
 @router.get("/users", response_model=UserListResponse)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getProducts } from '../api/products';
 import Pagination from './Pagination';
+import Spinner from './Spinner';
 import SortButtons from './SortButtons';
 import usePagination from '../hooks/usePagination';
 
@@ -80,7 +81,7 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
       {/* 제품 리스트 */}
       <div className="card" style={{ padding: 0 }}>
         {loading ? (
-          <div className="loading">Loading...</div>
+          <Spinner />
         ) : products.length === 0 ? (
           <div className="empty-state">No products found.</div>
         ) : (

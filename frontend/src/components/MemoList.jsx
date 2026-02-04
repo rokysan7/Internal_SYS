@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import {
   createProductMemo,
   createLicenseMemo,
   deleteProductMemo,
   deleteLicenseMemo,
 } from '../api/memos';
+import { ROLES } from '../constants/roles';
 import { formatDate } from './utils';
 
 /**
@@ -17,7 +18,7 @@ import { formatDate } from './utils';
  * @param {function} onMemoAdded - 메모 추가 성공 콜백 (newMemo)
  * @param {function} onMemoDeleted - 메모 삭제 성공 콜백 (memoId)
  */
-export default function MemoList({
+export default memo(function MemoList({
   title,
   memos,
   entityType,
@@ -62,7 +63,7 @@ export default function MemoList({
 
   const canDelete = (memo) => {
     if (!currentUser) return false;
-    return memo.author_id === currentUser.id || currentUser.role === 'ADMIN';
+    return memo.author_id === currentUser.id || currentUser.role === ROLES.ADMIN;
   };
 
   return (
@@ -127,4 +128,4 @@ export default function MemoList({
       </div>
     </div>
   );
-}
+});

@@ -4,6 +4,7 @@
 
 import os
 from datetime import datetime, timedelta
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas import LoginRequest, PasswordChange, TokenResponse, UserRead
-from typing import List
+from validators import validate_password
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -66,7 +67,7 @@ def require_role(*roles):
         if current_user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="권한이 부족합니다.",
+                detail="Insufficient permissions",
             )
         return current_user
     return role_checker
@@ -74,11 +75,12 @@ def require_role(*roles):
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
+    """Authenticate user and return JWT access token."""
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not pwd_context.verify(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+            detail="Invalid email or password",
         )
     access_token = create_access_token(data={"sub": str(user.id)})
     return TokenResponse(access_token=access_token)
@@ -86,6 +88,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserRead)
 def get_me(current_user: User = Depends(get_current_user)):
+    """Get current authenticated user's profile."""
     return current_user
 
 
@@ -104,11 +107,7 @@ def change_password(
         )
 
     # Validate new password
-    if len(data.new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters long",
-        )
+    validate_password(data.new_password)
 
     # Update password
     current_user.password_hash = pwd_context.hash(data.new_password)

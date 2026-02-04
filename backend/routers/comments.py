@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Comment, CSCase, Notification, NotificationType, User, UserRole
+from models import Comment, CSCase, User, UserRole
 from routers.auth import get_current_user
 from schemas import CommentCreate, CommentRead
+from tasks import notify_comment, notify_reply
 
 router = APIRouter(prefix="/cases/{case_id}/comments", tags=["Comments"])
 
@@ -80,29 +81,13 @@ def create_comment(
     db.commit()
     db.refresh(comment)
 
-    # 알림 생성 (동기 방식 - Celery 불필요)
+    # 알림 생성 (비동기 - Celery task)
     if data.parent_id and parent_comment:
         # 답글: 부모 댓글 작성자에게 알림 (본인 제외)
-        if parent_comment.author_id != author_id:
-            notif = Notification(
-                user_id=parent_comment.author_id,
-                case_id=case_id,
-                message=f"{current_user.name}님이 회원님의 댓글에 답글을 남겼습니다.",
-                type=NotificationType.COMMENT,
-            )
-            db.add(notif)
-            db.commit()
+        notify_reply.delay(case_id, parent_comment.author_id, current_user.name, author_id)
     else:
-        # 일반 댓글: 담당자에게 알림 (본인 제외)
-        if case.assignee_id and case.assignee_id != author_id:
-            notif = Notification(
-                user_id=case.assignee_id,
-                case_id=case_id,
-                message=f"CS Case #{case.id}에 새로운 댓글: {comment.content[:50]}",
-                type=NotificationType.COMMENT,
-            )
-            db.add(notif)
-            db.commit()
+        # 일반 댓글: 모든 담당자에게 알림 (본인 제외, many-to-many)
+        notify_comment.delay(case_id, author_id, comment.content)
 
     # Reload with author info
     db.refresh(comment)

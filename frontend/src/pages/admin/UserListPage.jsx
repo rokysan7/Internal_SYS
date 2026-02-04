@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUsers, deleteUser } from '../../api/admin';
+import { ROLE_LIST } from '../../constants/roles';
+import Spinner from '../../components/Spinner';
 import './AdminPages.css';
-
-const ROLES = ['', 'CS', 'ENGINEER', 'ADMIN'];
 
 export default function UserListPage() {
   const navigate = useNavigate();
@@ -75,14 +75,14 @@ export default function UserListPage() {
         </form>
         <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}>
           <option value="">All Roles</option>
-          {ROLES.filter(r => r).map((r) => (
+          {ROLE_LIST.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
       </div>
 
       {isLoading ? (
-        <div className="loading">Loading...</div>
+        <Spinner />
       ) : (
         <>
           <div className="admin-table-wrapper">

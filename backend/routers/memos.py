@@ -25,6 +25,7 @@ router = APIRouter(tags=["Memos"])
 
 @router.get("/products/{product_id}/memos", response_model=List[ProductMemoRead])
 def list_product_memos(product_id: int, db: Session = Depends(get_db)):
+    """List all memos for a product, ordered by newest first."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -48,6 +49,7 @@ def create_product_memo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Create a memo for a product."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -82,6 +84,7 @@ def delete_product_memo(
 
 @router.get("/licenses/{license_id}/memos", response_model=List[LicenseMemoRead])
 def list_license_memos(license_id: int, db: Session = Depends(get_db)):
+    """List all memos for a license, ordered by newest first."""
     license_obj = db.query(License).filter(License.id == license_id).first()
     if not license_obj:
         raise HTTPException(status_code=404, detail="License not found")
@@ -105,6 +108,7 @@ def create_license_memo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Create a memo for a license."""
     license_obj = db.query(License).filter(License.id == license_id).first()
     if not license_obj:
         raise HTTPException(status_code=404, detail="License not found")

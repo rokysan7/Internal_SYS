@@ -12,7 +12,7 @@ def test_create_checklist(client, sample_case):
     assert data["is_done"] is False
 
 
-def test_create_checklist_case_not_found(client, test_user):
+def test_create_checklist_case_not_found(client):
     resp = client.post("/cases/99999/checklists", json={"content": "task"})
     assert resp.status_code == 404
 

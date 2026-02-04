@@ -1,17 +1,13 @@
 """통계 API 테스트."""
 
-from unittest.mock import patch
 
-
-def test_stat_by_assignee(client, test_user, assignee_user, sample_product):
+def test_stat_by_assignee(client, assignee_user, sample_product):
     client.post("/cases/", json={
         "title": "Open Case",
         "content": "C",
         "requester": "Cust",
-        "assignee_id": assignee_user.id,
+        "assignee_ids": [assignee_user.id],
     })
-    with patch("routers.comments.notify_comment.delay"):
-        pass
     resp = client.get("/cases/statistics/", params={"by": "assignee"})
     assert resp.status_code == 200
     data = resp.json()
@@ -20,13 +16,13 @@ def test_stat_by_assignee(client, test_user, assignee_user, sample_product):
     assert assignee_stat["open_count"] >= 1
 
 
-def test_stat_by_assignee_empty(client, test_user):
+def test_stat_by_assignee_empty(client):
     resp = client.get("/cases/statistics/", params={"by": "assignee"})
     assert resp.status_code == 200
     assert resp.json() == []
 
 
-def test_stat_by_status(client, test_user, sample_product):
+def test_stat_by_status(client, sample_product):
     client.post("/cases/", json={
         "title": "S1", "content": "C", "requester": "Cust",
     })
@@ -41,13 +37,13 @@ def test_stat_by_status(client, test_user, sample_product):
     assert open_stat["count"] >= 2
 
 
-def test_stat_by_status_empty(client, test_user):
+def test_stat_by_status_empty(client):
     resp = client.get("/cases/statistics/", params={"by": "status"})
     assert resp.status_code == 200
     assert resp.json() == []
 
 
-def test_stat_by_time_with_completed(client, test_user, sample_product):
+def test_stat_by_time_with_completed(client, sample_product):
     case_resp = client.post("/cases/", json={
         "title": "Done Case",
         "content": "C",
@@ -63,7 +59,7 @@ def test_stat_by_time_with_completed(client, test_user, sample_product):
     assert data["avg_hours"] is not None
 
 
-def test_stat_by_time_no_completed(client, test_user):
+def test_stat_by_time_no_completed(client):
     resp = client.get("/cases/statistics/", params={"by": "time"})
     assert resp.status_code == 200
     data = resp.json()
@@ -71,6 +67,6 @@ def test_stat_by_time_no_completed(client, test_user):
     assert data["avg_hours"] is None
 
 
-def test_stat_invalid_by(client, test_user):
+def test_stat_invalid_by(client):
     resp = client.get("/cases/statistics/", params={"by": "invalid"})
     assert resp.status_code == 400
