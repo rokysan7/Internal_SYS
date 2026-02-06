@@ -61,6 +61,9 @@ class User(Base):
 
     assigned_cases = relationship("CSCase", back_populates="assignee")
     notifications = relationship("Notification", back_populates="user")
+    push_subscriptions = relationship(
+        "PushSubscription", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Product(Base):
@@ -209,3 +212,18 @@ class Notification(Base):
 
     user = relationship("User", back_populates="notifications")
     case = relationship("CSCase", back_populates="notifications")
+
+
+class PushSubscription(Base):
+    """Browser Web Push subscription per user device."""
+
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    endpoint = Column(String, unique=True, nullable=False)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="push_subscriptions")

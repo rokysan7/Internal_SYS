@@ -299,6 +299,23 @@ class NotificationRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ======================== PushSubscription ========================
+
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionDelete(BaseModel):
+    endpoint: str
+
+
+class VapidPublicKeyResponse(BaseModel):
+    public_key: str
+
+
 # ======================== Auth ========================
 
 

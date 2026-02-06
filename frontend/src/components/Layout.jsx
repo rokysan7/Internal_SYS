@@ -2,10 +2,33 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getNotifications, markAsRead } from '../api/notifications';
+import { subscribePush, unsubscribePush, getPushSubscription } from '../api/push';
 import { ROLES } from '../constants/roles';
 import './Layout.css';
 
 const POLL_INTERVAL = 30_000; // 30초 주기 fetch
+const NOTIFICATION_TITLE = 'CS Dashboard';
+
+/** 폴링으로 감지한 새 알림을 OS 알림으로 표시 (FCM 미전달 대비 fallback) */
+function showOSNotification(notification) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const title = NOTIFICATION_TITLE;
+  const options = {
+    body: notification.message,
+    icon: '/favicon.ico',
+    tag: `notif-${notification.id}`,
+    data: { case_id: notification.case_id },
+  };
+
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.showNotification(title, options);
+    });
+  } else {
+    new Notification(title, options);
+  }
+}
 
 function formatTime(dateStr) {
   const d = new Date(dateStr);
@@ -31,17 +54,60 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPermission, setPushPermission] = useState(
+    'Notification' in window ? Notification.permission : 'unsupported'
+  );
   const wrapperRef = useRef(null);
+  const seenIdsRef = useRef(new Set());
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     try {
       const res = await getNotifications({ user_id: user.id, unread_only: false });
-      setNotifications(res.data);
+      const data = res.data;
+
+      // 첫 로드 시 기존 ID를 모두 seen 처리 (페이지 새로고침 시 중복 알림 방지)
+      if (seenIdsRef.current.size === 0) {
+        data.forEach((n) => seenIdsRef.current.add(n.id));
+      } else {
+        // 새로 등장한 미읽은 알림 → OS 알림 표시
+        data.forEach((n) => {
+          if (!n.is_read && !seenIdsRef.current.has(n.id)) {
+            showOSNotification(n);
+          }
+          seenIdsRef.current.add(n.id);
+        });
+      }
+
+      setNotifications(data);
     } catch {
       // 실패 시 무시 — 백그라운드 폴링이므로
     }
   }, [user?.id]);
+
+  // Push 구독 상태 초기화
+  useEffect(() => {
+    getPushSubscription().then((sub) => setPushEnabled(!!sub)).catch(() => {});
+  }, []);
+
+  const handleTogglePush = useCallback(async () => {
+    try {
+      if (pushEnabled) {
+        await unsubscribePush();
+        setPushEnabled(false);
+      } else {
+        await subscribePush();
+        setPushEnabled(true);
+        setPushPermission('granted');
+      }
+    } catch {
+      setPushPermission(Notification.permission);
+      if (Notification.permission === 'denied') {
+        alert('알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요.');
+      }
+    }
+  }, [pushEnabled]);
 
   // 초기 로드 + 주기적 폴링
   useEffect(() => {
@@ -119,6 +185,22 @@ export default function Layout() {
         <header className="topbar">
           <div className="topbar-title">CS Case Management</div>
           <div className="topbar-actions">
+            {'Notification' in window && pushPermission !== 'unsupported' && (
+              <button
+                className={`push-toggle-btn ${pushEnabled ? 'active' : ''}`}
+                onClick={handleTogglePush}
+                title={
+                  pushPermission === 'denied'
+                    ? '알림 차단됨 — 브라우저 설정에서 허용 필요'
+                    : pushEnabled
+                      ? '푸시 알림 끄기'
+                      : '푸시 알림 켜기'
+                }
+                aria-label={pushEnabled ? '푸시 알림 비활성화' : '푸시 알림 활성화'}
+              >
+                {pushPermission === 'denied' ? '🔇' : pushEnabled ? '🔊' : '🔈'}
+              </button>
+            )}
             <div className="notification-wrapper" ref={wrapperRef}>
               <button
                 className="notification-btn"

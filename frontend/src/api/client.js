@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8002';
+// HTTPS 환경에서는 Vite 프록시를 통해 같은 출처로 API 호출 (Mixed Content 방지)
+// HTTP 환경에서는 직접 백엔드 호출
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (window.location.protocol === 'https:' ? '' : 'http://localhost:8002');
 
 const client = axios.create({
   baseURL: API_BASE,
