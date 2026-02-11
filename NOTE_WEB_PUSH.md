@@ -179,7 +179,7 @@ FCM 전달 불안정 문제를 우회하기 위해, 기존 30초 폴링에서 **
 const seenIdsRef = useRef(new Set());
 
 // 폴링 시 새 알림 감지
-if (seenIdsRef.current.size === 0) {
+if (seenIdsRef.current.size === 0) {그치 
   // 첫 로드: 기존 알림을 모두 seen 처리 (중복 알림 방지)
   data.forEach((n) => seenIdsRef.current.add(n.id));
 } else {

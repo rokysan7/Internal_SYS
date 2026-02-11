@@ -5,6 +5,7 @@ Celery 앱 설정 (브로커: Redis).
 import os
 
 from celery import Celery
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -25,6 +26,14 @@ celery.conf.update(
         "check-pending-cases-every-hour": {
             "task": "tasks.check_pending_cases",
             "schedule": 3600.0,
+        },
+        "rebuild-tfidf-model-daily": {
+            "task": "tasks.rebuild_tfidf_model",
+            "schedule": crontab(hour=3, minute=0),
+        },
+        "cleanup-tag-keywords-weekly": {
+            "task": "tasks.cleanup_tag_keywords",
+            "schedule": crontab(hour=4, minute=0, day_of_week=0),
         },
     },
 )

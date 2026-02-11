@@ -13,7 +13,9 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -227,3 +229,16 @@ class PushSubscription(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="push_subscriptions")
+
+
+class TagMaster(Base):
+    """Tag registry for auto-complete, suggestions, and keyword learning."""
+
+    __tablename__ = "tag_master"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False, index=True)
+    usage_count = Column(Integer, default=0)
+    keyword_weights = Column(JSONB, default={})
+    created_by = Column(String, default="user")  # "user" | "system" | "seed"
+    created_at = Column(DateTime, default=func.now())

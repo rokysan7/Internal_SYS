@@ -215,7 +215,10 @@ class CaseSimilarRead(BaseModel):
     id: int
     title: str
     status: CaseStatus
-    assignee_id: Optional[int] = None
+    similarity_score: float = 0.0
+    matched_tags: List[str] = []
+    comment_count: int = 0
+    resolved_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -359,3 +362,17 @@ class BulkUploadResult(BaseModel):
     licenses_created: int
     licenses_existing: int
     errors: List[str] = []
+
+
+# ======================== Tag ========================
+
+
+class TagSearchResult(BaseModel):
+    name: str
+    usage_count: int
+
+
+class TagSuggestResult(BaseModel):
+    name: str
+    score: float
+    usage_count: int

@@ -140,7 +140,24 @@ def celery_eager(db_session):
     celery_app.conf.task_eager_propagates = True
     original_close = db_session.close
     db_session.close = lambda: None  # prevent task from closing test session
-    with patch("tasks.SessionLocal", return_value=db_session):
+
+    # In-memory cache store to avoid real Redis in tests
+    _fake_cache = {}
+
+    def _fake_set(key, value, ex=None):
+        _fake_cache[key] = value
+
+    def _fake_get(key):
+        return _fake_cache.get(key)
+
+    def _fake_delete(key):
+        _fake_cache.pop(key, None)
+
+    with patch("tasks.SessionLocal", return_value=db_session), \
+         patch("services.cache.cache_redis") as mock_redis:
+        mock_redis.set = _fake_set
+        mock_redis.get = _fake_get
+        mock_redis.delete = _fake_delete
         yield
     db_session.close = original_close
     celery_app.conf.task_always_eager = False
@@ -181,3 +198,59 @@ def sample_case(client, assignee_user, sample_product, sample_license):
     })
     assert resp.status_code == 201
     return resp.json()
+
+
+@pytest.fixture()
+def sample_tags(db_session):
+    """Create seed tags for tag search/suggest tests."""
+    from models import TagMaster
+
+    tags = []
+    for name, kw, count, created_by in [
+        ("결제", {"결제": 5, "오류": 3, "카드": 2}, 10, "seed"),
+        ("로그인", {"로그인": 4, "비밀번호": 3, "인증": 2}, 8, "seed"),
+        ("설치", {"설치": 6, "다운로드": 2, "오류": 1}, 5, "seed"),
+        ("환불", {"환불": 3, "결제": 2}, 3, "user"),
+        ("네트워크", {"네트워크": 2, "연결": 1}, 0, "user"),
+    ]:
+        tag = TagMaster(
+            name=name, keyword_weights=kw,
+            usage_count=count, created_by=created_by,
+        )
+        db_session.add(tag)
+        tags.append(tag)
+    db_session.commit()
+    for t in tags:
+        db_session.refresh(t)
+    return tags
+
+
+@pytest.fixture()
+def sample_cases_for_similarity(client):
+    """Create cases with overlapping tags/titles for similarity tests."""
+    cases = []
+    data_list = [
+        {
+            "title": "결제 오류 발생",
+            "content": "신용카드 결제 시 오류가 발생합니다",
+            "requester": "Cust A",
+            "tags": ["결제", "오류"],
+        },
+        {
+            "title": "결제 취소 문의",
+            "content": "결제를 취소하고 싶습니다",
+            "requester": "Cust B",
+            "tags": ["결제", "환불"],
+        },
+        {
+            "title": "로그인 불가 현상",
+            "content": "비밀번호를 입력해도 로그인이 되지 않습니다",
+            "requester": "Cust C",
+            "tags": ["로그인", "인증"],
+        },
+    ]
+    for d in data_list:
+        resp = client.post("/cases/", json=d)
+        assert resp.status_code == 201
+        cases.append(resp.json())
+    return cases

@@ -5,6 +5,7 @@ import { getProductLicenses } from '../api/products';
 import { useAuth } from '../contexts/AuthContext';
 import ProductSearchDropdown from './ProductSearchDropdown';
 import SimilarCasesWidget from './SimilarCasesWidget';
+import TagInput from './TagInput';
 
 /**
  * CS Case creation form with searchable product dropdown.
@@ -14,7 +15,7 @@ export default function CaseForm() {
   const { user } = useAuth();
   const [form, setForm] = useState({
     title: '', content: '', requester: '', priority: 'MEDIUM',
-    product_id: '', license_id: '', assignee_ids: [], tags: '',
+    product_id: '', license_id: '', assignee_ids: [], tags: [],
   });
   const [licenses, setLicenses] = useState([]);
   const [assignees, setAssignees] = useState([]);
@@ -53,7 +54,7 @@ export default function CaseForm() {
         product_id: form.product_id ? Number(form.product_id) : null,
         license_id: form.license_id ? Number(form.license_id) : null,
         assignee_ids: form.assignee_ids,
-        tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        tags: form.tags,
       };
       const res = await createCase(payload);
       navigate(`/cases/${res.data.id}`);
@@ -79,7 +80,7 @@ export default function CaseForm() {
             <input name="title" value={form.title} onChange={handleChange} required />
           </div>
 
-          <SimilarCasesWidget title={form.title} />
+          <SimilarCasesWidget title={form.title} content={form.content} tags={form.tags} />
 
           <div className="form-group">
             <label>Content *</label>
@@ -159,12 +160,12 @@ export default function CaseForm() {
           </div>
 
           <div className="form-group">
-            <label>Tags (comma separated)</label>
-            <input
-              name="tags"
+            <label>Tags</label>
+            <TagInput
               value={form.tags}
-              onChange={handleChange}
-              placeholder="e.g. login, error, urgent"
+              onChange={(tags) => setForm((prev) => ({ ...prev, tags }))}
+              title={form.title}
+              content={form.content}
             />
           </div>
 

@@ -1,4 +1,5 @@
 /* ===== CasePage Specific Styles ===== */
+@import './similar-cases.css';
 
 /* Multi-select assignee */
 .multi-select-wrap .selected-tags {
@@ -27,62 +28,4 @@
   font-size: 0.9rem;
   padding: 0;
   line-height: 1;
-}
-
-/* Similar Cases Suggestions */
-.similar-cases {
-  margin-top: -0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #ffffff;
-  overflow: hidden;
-}
-
-.similar-cases-header {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.75rem;
-  background: #eff6ff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #1d4ed8;
-}
-
-.similar-case-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  border-top: 1px solid #f1f5f9;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.1s;
-  text-decoration: none;
-  color: inherit;
-}
-
-.similar-case-item:hover {
-  background: #f8fafc;
-}
-
-.similar-case-title {
-  color: #334155;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.similar-case-item:hover .similar-case-title {
-  color: #0ea5e9;
-}
-
-.similar-case-id {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin-right: 0.5rem;
-  flex-shrink: 0;
 }

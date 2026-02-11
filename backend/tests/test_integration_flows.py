@@ -163,8 +163,8 @@ def test_similar_cases_flow(client):
         "title": "로그인 문제", "content": "비밀번호 초기화", "requester": "Cust",
     })
 
-    results = client.get("/cases/similar", params={"query": "결제"}).json()
-    assert len(results) == 2
+    results = client.get("/cases/similar", params={"title": "결제 오류 문의"}).json()
+    assert len(results) >= 1
 
 
 def test_case_filter_combinations(client, assignee_user, sample_product):

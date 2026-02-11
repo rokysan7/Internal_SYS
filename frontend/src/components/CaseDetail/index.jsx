@@ -20,6 +20,7 @@ import DescriptionCard from './DescriptionCard';
 import CommentsCard from './CommentsCard';
 import InfoCard from './InfoCard';
 import ChecklistCard from './ChecklistCard';
+import SimilarCasesPanel from './SimilarCasesPanel';
 
 /**
  * CS Case detail view (with comments + checklists).
@@ -184,6 +185,7 @@ export default function CaseDetail({ caseId }) {
             onAdd={handleAddCheckItem}
             onToggle={handleToggleCheck}
           />
+          <SimilarCasesPanel caseId={caseId} />
         </div>
       </div>
     </div>

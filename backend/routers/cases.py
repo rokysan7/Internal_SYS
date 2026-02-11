@@ -18,30 +18,83 @@ from schemas import (
     StatByAssignee, StatByStatus, StatByTime,
 )
 from services.statistics import stat_by_assignee, stat_by_status, stat_by_time
-from tasks import notify_case_assigned
+from tasks import compute_case_similarity, learn_tags_from_case, notify_case_assigned
 
 router = APIRouter(prefix="/cases", tags=["CS Cases"])
 
 
 @router.get("/similar", response_model=List[CaseSimilarRead])
 def get_similar_cases(
-    query: str = Query(..., description="검색 쿼리 (제목/내용 기반)"),
+    title: str = Query("", description="Case title"),
+    content: str = Query("", description="Case content"),
+    tags: List[str] = Query([], description="Tag list"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Search for similar cases by title or content keyword match."""
-    results = (
-        db.query(CSCase)
-        .filter(
-            or_(
-                CSCase.title.ilike(f"%{query}%"),
-                CSCase.content.ilike(f"%{query}%"),
-            )
-        )
-        .order_by(CSCase.created_at.desc())
-        .limit(10)
-        .all()
+    """Find similar cases using TF-IDF similarity with tag/title/content weighting."""
+    if len(title.strip()) < 3 and not content.strip():
+        return []
+
+    import numpy as np
+
+    from services.similarity import (
+        SIMILARITY_THRESHOLD,
+        CaseSimilarityEngine,
+        compute_tag_similarity,
+        load_model_from_redis,
+        save_model_to_redis,
     )
+
+    all_cases = db.query(CSCase).all()
+    if not all_cases:
+        return []
+
+    engine = load_model_from_redis()
+    if engine is None or not engine._fitted:
+        if len(all_cases) > 1000:
+            return []
+        engine = CaseSimilarityEngine()
+        engine.fit(
+            [c.title for c in all_cases],
+            [c.content or "" for c in all_cases],
+        )
+        save_model_to_redis(engine)
+
+    # Batch transform (sparse matrices)
+    target_title_vec = engine.get_title_vector(title)
+    target_content_vec = engine.get_content_vector(content)
+    all_title_vecs = engine.batch_title_vectors([c.title for c in all_cases])
+    all_content_vecs = engine.batch_content_vectors([c.content or "" for c in all_cases])
+
+    title_sims = engine.batch_similarities(target_title_vec, all_title_vecs)
+    content_sims = engine.batch_similarities(target_content_vec, all_content_vecs)
+
+    input_tags = tags or []
+    combined_scores = np.zeros(len(all_cases))
+    for i, case in enumerate(all_cases):
+        tag_sim = compute_tag_similarity(input_tags, case.tags or [])
+        combined_scores[i] = tag_sim * 0.5 + title_sims[i] * 0.3 + content_sims[i] * 0.2
+
+    # Top 5 via argsort, apply threshold
+    top_indices = np.argsort(combined_scores)[::-1][:5]
+
+    results = []
+    for i in top_indices:
+        score = float(combined_scores[i])
+        if score < SIMILARITY_THRESHOLD:
+            continue
+        c = all_cases[i]
+        matched = list(set(t.lower() for t in input_tags) & set(t.lower() for t in (c.tags or [])))
+        comment_count = len(c.comments) if c.comments else 0
+        results.append(CaseSimilarRead(
+            id=c.id,
+            title=c.title,
+            status=c.status,
+            similarity_score=round(score, 4),
+            matched_tags=matched,
+            comment_count=comment_count,
+            resolved_at=c.completed_at,
+        ))
     return results
 
 
@@ -111,6 +164,13 @@ def create_case(
     if assignee_ids:
         notify_case_assigned.delay(case.id, assignee_ids)
 
+    # Learn tag keyword associations (async)
+    if case.tags:
+        learn_tags_from_case.delay(case.id)
+
+    # Compute similar cases (async)
+    compute_case_similarity.delay(case.id)
+
     return case
 
 
@@ -150,6 +210,109 @@ def get_case(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return case
+
+
+@router.get("/{case_id}/similar", response_model=List[CaseSimilarRead])
+def get_case_similar(
+    case_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Get similar cases for an existing case. Uses Redis cache, falls back to real-time computation."""
+    from services.cache import get_cached_similar_cases
+    from services.similarity import (
+        SIMILARITY_THRESHOLD,
+        CaseSimilarityEngine,
+        compute_tag_similarity,
+        load_model_from_redis,
+        save_model_to_redis,
+    )
+
+    case = db.query(CSCase).filter(CSCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # Try Redis cache first
+    cached = get_cached_similar_cases(case_id)
+    if cached:
+        case_ids = [item["case_id"] for item in cached[:5]]
+        score_map = {item["case_id"]: item["score"] for item in cached[:5]}
+        cases = db.query(CSCase).filter(CSCase.id.in_(case_ids)).all()
+        case_map = {c.id: c for c in cases}
+
+        results = []
+        for cid in case_ids:
+            c = case_map.get(cid)
+            if not c:
+                continue
+            matched = list(set(t.lower() for t in (case.tags or [])) & set(t.lower() for t in (c.tags or [])))
+            comment_count = len(c.comments) if c.comments else 0
+            results.append(CaseSimilarRead(
+                id=c.id,
+                title=c.title,
+                status=c.status,
+                similarity_score=round(score_map[cid], 4),
+                matched_tags=matched,
+                comment_count=comment_count,
+                resolved_at=c.completed_at,
+            ))
+        return results
+
+    # Fallback: real-time batch computation
+    import numpy as np
+
+    all_cases = db.query(CSCase).filter(CSCase.id != case_id).all()
+    if not all_cases:
+        return []
+
+    engine = load_model_from_redis()
+    if engine is None or not engine._fitted:
+        if len(all_cases) > 1000:
+            return []
+        corpus = [case] + all_cases
+        engine = CaseSimilarityEngine()
+        engine.fit(
+            [c.title for c in corpus],
+            [c.content or "" for c in corpus],
+        )
+        save_model_to_redis(engine)
+
+    # Batch transform (sparse matrices)
+    target_title_vec = engine.get_title_vector(case.title)
+    target_content_vec = engine.get_content_vector(case.content or "")
+    all_title_vecs = engine.batch_title_vectors([c.title for c in all_cases])
+    all_content_vecs = engine.batch_content_vectors([c.content or "" for c in all_cases])
+
+    title_sims = engine.batch_similarities(target_title_vec, all_title_vecs)
+    content_sims = engine.batch_similarities(target_content_vec, all_content_vecs)
+
+    target_tags = case.tags or []
+    combined_scores = np.zeros(len(all_cases))
+    for i, other in enumerate(all_cases):
+        tag_sim = compute_tag_similarity(target_tags, other.tags or [])
+        combined_scores[i] = tag_sim * 0.5 + title_sims[i] * 0.3 + content_sims[i] * 0.2
+
+    # Top 5 via argsort, apply threshold
+    top_indices = np.argsort(combined_scores)[::-1][:5]
+
+    results = []
+    for i in top_indices:
+        score = float(combined_scores[i])
+        if score < SIMILARITY_THRESHOLD:
+            continue
+        c = all_cases[i]
+        matched = list(set(t.lower() for t in target_tags) & set(t.lower() for t in (c.tags or [])))
+        comment_count = len(c.comments) if c.comments else 0
+        results.append(CaseSimilarRead(
+            id=c.id,
+            title=c.title,
+            status=c.status,
+            similarity_score=round(score, 4),
+            matched_tags=matched,
+            comment_count=comment_count,
+            resolved_at=c.completed_at,
+        ))
+    return results
 
 
 @router.put("/{case_id}", response_model=CaseRead)
@@ -193,6 +356,13 @@ def update_case(
         added_ids = set(new_assignee_ids) - old_assignee_ids
         if added_ids:
             notify_case_assigned.delay(case.id, list(added_ids))
+
+    # Learn tag keyword associations (async)
+    if case.tags:
+        learn_tags_from_case.delay(case.id)
+
+    # Compute similar cases (async)
+    compute_case_similarity.delay(case.id)
 
     return case
 

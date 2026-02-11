@@ -26,9 +26,13 @@ export const updateCaseStatus = (id, status) =>
 export const deleteCase = (id) =>
   client.delete(`/cases/${id}`);
 
-/** 유사 문의 검색 */
-export const getSimilarCases = (query) =>
-  client.get('/cases/similar', { params: { query } });
+/** 유사 문의 검색 (TF-IDF + tag similarity) */
+export const getSimilarCases = ({ title, content = '', tags = [] }) =>
+  client.get('/cases/similar', { params: { title, content, tags } });
+
+/** 특정 케이스의 유사 케이스 조회 */
+export const getSimilarCasesById = (caseId) =>
+  client.get(`/cases/${caseId}/similar`);
 
 /** 댓글 목록 조회 */
 export const getComments = (caseId) =>
