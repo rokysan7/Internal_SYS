@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 /**
  * 재사용 가능한 페이지네이션 컴포넌트.
  * @param {number} page - 현재 페이지 (1부터 시작)
@@ -5,7 +7,7 @@
  * @param {function} onPageChange - 페이지 변경 콜백
  * @param {boolean} disabled - 비활성화 여부
  */
-export default function Pagination({ page, totalPages, onPageChange, disabled = false }) {
+export default memo(function Pagination({ page, totalPages, onPageChange, disabled = false }) {
   if (totalPages <= 1) return null;
 
   return (
@@ -47,4 +49,4 @@ export default function Pagination({ page, totalPages, onPageChange, disabled = 
       </button>
     </div>
   );
-}
+});

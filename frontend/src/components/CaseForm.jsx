@@ -16,6 +16,7 @@ export default function CaseForm() {
   const [form, setForm] = useState({
     title: '', content: '', requester: '', priority: 'MEDIUM',
     product_id: '', license_id: '', assignee_ids: [], tags: [],
+    organization: '', org_phone: '', org_contact: '',
   });
   const [licenses, setLicenses] = useState([]);
   const [assignees, setAssignees] = useState([]);
@@ -55,6 +56,9 @@ export default function CaseForm() {
         license_id: form.license_id ? Number(form.license_id) : null,
         assignee_ids: form.assignee_ids,
         tags: form.tags,
+        organization: form.organization || null,
+        org_phone: form.org_phone || null,
+        org_contact: form.org_contact || null,
       };
       const res = await createCase(payload);
       navigate(`/cases/${res.data.id}`);
@@ -99,6 +103,21 @@ export default function CaseForm() {
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
               </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Organization</label>
+              <input name="organization" value={form.organization} onChange={handleChange} placeholder="Requesting organization" />
+            </div>
+            <div className="form-group">
+              <label>Org Phone</label>
+              <input name="org_phone" value={form.org_phone} onChange={handleChange} placeholder="Organization phone" />
+            </div>
+            <div className="form-group">
+              <label>Org Contact</label>
+              <input name="org_contact" value={form.org_contact} onChange={handleChange} placeholder="Contact person" />
             </div>
           </div>
 

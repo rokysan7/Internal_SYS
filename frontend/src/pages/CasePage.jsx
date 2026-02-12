@@ -44,6 +44,7 @@ function CaseListView() {
         setTotalPages(res.data.total_pages);
       } catch (err) {
         console.error('Failed to load cases:', err);
+        alert(err.response?.data?.detail || 'Failed to load cases');
       } finally {
         setLoading(false);
       }
@@ -103,6 +104,7 @@ function CaseListView() {
           <option value="OPEN">Open</option>
           <option value="IN_PROGRESS">In Progress</option>
           <option value="DONE">Done</option>
+          <option value="CANCEL">Cancel</option>
         </select>
         <select value={priorityFilter} onChange={handlePriorityChange}>
           <option value="">All Priority</option>

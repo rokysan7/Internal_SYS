@@ -1,6 +1,8 @@
 import { memo, useEffect, useState } from 'react';
 import { getSimilarCases } from '../api/cases';
+import { CASE_STATUS } from '../constants/caseStatus';
 import useDebounce from '../hooks/useDebounce';
+import { formatDateShort } from './utils';
 
 /**
  * Shows similar cases based on title, content, and tags (debounced).
@@ -32,17 +34,10 @@ function SimilarCasesWidget({ title = '', content = '', tags = [] }) {
       .finally(() => setLoading(false));
   }, [debouncedTitle, debouncedContent, debouncedTags]);
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('ko-KR', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-    });
-  };
-
   const statusConfig = {
-    DONE: { label: '해결됨', className: 'status-resolved' },
-    IN_PROGRESS: { label: '진행중', className: 'status-progress' },
-    OPEN: { label: '미처리', className: 'status-open' },
+    [CASE_STATUS.DONE]: { label: '해결됨', className: 'status-resolved' },
+    [CASE_STATUS.IN_PROGRESS]: { label: '진행중', className: 'status-progress' },
+    [CASE_STATUS.OPEN]: { label: '미처리', className: 'status-open' },
   };
 
   const scoreBadgeClass = (score) => {
@@ -88,7 +83,7 @@ function SimilarCasesWidget({ title = '', content = '', tags = [] }) {
                 )}
                 <span className={`similar-case-status ${status.className}`}>
                   {status.label}
-                  {sc.status === 'DONE' && sc.resolved_at && ` (${formatDate(sc.resolved_at)})`}
+                  {sc.status === CASE_STATUS.DONE && sc.resolved_at && ` (${formatDateShort(sc.resolved_at)})`}
                 </span>
                 {sc.comment_count > 0 && (
                   <span className="similar-case-comments">

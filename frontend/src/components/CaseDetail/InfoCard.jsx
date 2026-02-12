@@ -24,6 +24,7 @@ export default function InfoCard({ caseData, onStatusChange }) {
           <option value="OPEN">Open</option>
           <option value="IN_PROGRESS">In Progress</option>
           <option value="DONE">Done</option>
+          <option value="CANCEL">Cancel</option>
         </select>
       </div>
       <div className="detail-field">
@@ -58,6 +59,24 @@ export default function InfoCard({ caseData, onStatusChange }) {
           ) : '-'}
         </span>
       </div>
+      {caseData.organization && (
+        <div className="detail-field">
+          <span className="detail-label">Organization</span>
+          <span className="detail-value">{caseData.organization}</span>
+        </div>
+      )}
+      {caseData.org_phone && (
+        <div className="detail-field">
+          <span className="detail-label">Org Phone</span>
+          <span className="detail-value">{caseData.org_phone}</span>
+        </div>
+      )}
+      {caseData.org_contact && (
+        <div className="detail-field">
+          <span className="detail-label">Org Contact</span>
+          <span className="detail-value">{caseData.org_contact}</span>
+        </div>
+      )}
       <div className="detail-field">
         <span className="detail-label">Created</span>
         <span className="detail-value">{formatDate(caseData.created_at)}</span>
@@ -66,6 +85,12 @@ export default function InfoCard({ caseData, onStatusChange }) {
         <div className="detail-field">
           <span className="detail-label">Completed</span>
           <span className="detail-value">{formatDate(caseData.completed_at)}</span>
+        </div>
+      )}
+      {caseData.status === 'CANCEL' && caseData.canceled_at && (
+        <div className="detail-field">
+          <span className="detail-label">Canceled</span>
+          <span className="detail-value">{formatDate(caseData.canceled_at)}</span>
         </div>
       )}
       {caseData.tags?.length > 0 && (

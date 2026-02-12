@@ -158,6 +158,62 @@ def compute_combined_similarity(
     return tag_sim * 0.5 + title_sim * 0.3 + content_sim * 0.2
 
 
+MAX_SIMILAR_RESULTS = 5
+MAX_SIMILAR_BATCH = 20
+
+
+def find_similar_cases(
+    target_title: str,
+    target_content: str,
+    target_tags: list[str],
+    all_cases: list,
+    top_n: int = MAX_SIMILAR_RESULTS,
+) -> list[dict]:
+    """Compute top-N similar cases using TF-IDF + tag similarity.
+
+    Loads or builds TF-IDF model from Redis. Returns list of
+    {"case": case_obj, "score": float, "matched_tags": list[str]}.
+    """
+    if not all_cases:
+        return []
+
+    engine = load_model_from_redis()
+    if engine is None or not engine._fitted:
+        if len(all_cases) > 1000:
+            return []
+        corpus_titles = [target_title] + [c.title for c in all_cases]
+        corpus_contents = [target_content] + [c.content or "" for c in all_cases]
+        engine = CaseSimilarityEngine()
+        engine.fit(corpus_titles, corpus_contents)
+        save_model_to_redis(engine)
+
+    target_title_vec = engine.get_title_vector(target_title)
+    target_content_vec = engine.get_content_vector(target_content)
+    all_title_vecs = engine.batch_title_vectors([c.title for c in all_cases])
+    all_content_vecs = engine.batch_content_vectors([c.content or "" for c in all_cases])
+
+    title_sims = engine.batch_similarities(target_title_vec, all_title_vecs)
+    content_sims = engine.batch_similarities(target_content_vec, all_content_vecs)
+
+    combined_scores = np.zeros(len(all_cases))
+    for i, case in enumerate(all_cases):
+        tag_sim = compute_tag_similarity(target_tags, case.tags or [])
+        combined_scores[i] = compute_combined_similarity(tag_sim, title_sims[i], content_sims[i])
+
+    top_indices = np.argsort(combined_scores)[::-1][:top_n]
+    input_tag_set = set(t.lower() for t in target_tags)
+
+    results = []
+    for i in top_indices:
+        score = float(combined_scores[i])
+        if score < SIMILARITY_THRESHOLD:
+            continue
+        c = all_cases[i]
+        matched = list(input_tag_set & set(t.lower() for t in (c.tags or [])))
+        results.append({"case": c, "score": round(score, 4), "matched_tags": matched})
+    return results
+
+
 # ---------- Model Serialization ----------
 
 

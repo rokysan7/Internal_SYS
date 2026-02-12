@@ -51,6 +51,7 @@ export default function CaseDetail({ caseId }) {
         setChecklists(checkRes.data);
       } catch (err) {
         console.error('Failed to load case:', err);
+        alert(err.response?.data?.detail || 'Failed to load case');
       } finally {
         setLoading(false);
       }
@@ -74,8 +75,8 @@ export default function CaseDetail({ caseId }) {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      await updateCaseStatus(caseId, newStatus);
-      setCaseData((prev) => ({ ...prev, status: newStatus }));
+      const res = await updateCaseStatus(caseId, newStatus);
+      setCaseData((prev) => ({ ...prev, ...res.data }));
     } catch (err) {
       console.error('Status update failed:', err);
       alert(err.response?.data?.detail || 'Failed to update status');

@@ -50,6 +50,78 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* Section Header Row (title + controls side by side) */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.section-header-row .section-title {
+  margin-bottom: 0;
+}
+
+/* Period Controls */
+.period-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.period-toggle {
+  display: flex;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.period-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: none;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.period-btn:not(:last-child) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.period-btn:hover {
+  background: #f1f5f9;
+}
+
+.period-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.period-select {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: inherit;
+  color: #334155;
+  background: #ffffff;
+}
+
+.period-date {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: inherit;
+  color: #334155;
+}
+
 /* Assignee Stats Table */
 .assignee-stats-table {
   width: 100%;
@@ -88,3 +160,4 @@
 .assignee-stats-table .count-open { color: #1d4ed8; }
 .assignee-stats-table .count-progress { color: #b45309; }
 .assignee-stats-table .count-done { color: #15803d; }
+.assignee-stats-table .count-cancel { color: #dc2626; }

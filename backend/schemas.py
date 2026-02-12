@@ -169,6 +169,9 @@ class CaseBase(BaseModel):
     requester: str
     priority: Priority = Priority.MEDIUM
     tags: Optional[List[str]] = []
+    organization: Optional[str] = None
+    org_phone: Optional[str] = None
+    org_contact: Optional[str] = None
 
 
 class CaseCreate(CaseBase):
@@ -184,6 +187,9 @@ class CaseUpdate(BaseModel):
     assignee_ids: Optional[List[int]] = None
     priority: Optional[Priority] = None
     tags: Optional[List[str]] = None
+    organization: Optional[str] = None
+    org_phone: Optional[str] = None
+    org_contact: Optional[str] = None
 
 
 class CaseStatusUpdate(BaseModel):
@@ -206,6 +212,7 @@ class CaseRead(CaseBase):
     status: CaseStatus
     created_at: datetime
     completed_at: Optional[datetime] = None
+    canceled_at: Optional[datetime] = None
     assignee: Optional[CaseAssignee] = None
 
     model_config = {"from_attributes": True}
@@ -283,6 +290,8 @@ class ChecklistRead(ChecklistBase):
     id: int
     case_id: int
     is_done: bool
+    author_id: Optional[int] = None
+    author_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -335,12 +344,21 @@ class TokenResponse(BaseModel):
 # ======================== Statistics ========================
 
 
+class MyProgress(BaseModel):
+    """Current user's case counts by status."""
+    open_count: int = 0
+    in_progress_count: int = 0
+    done_count: int = 0
+    cancel_count: int = 0
+
+
 class StatByAssignee(BaseModel):
     assignee_id: int
     assignee_name: str
     open_count: int
     in_progress_count: int
     done_count: int
+    cancel_count: int
 
 
 class StatByStatus(BaseModel):

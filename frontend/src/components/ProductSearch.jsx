@@ -38,7 +38,10 @@ export default function ProductSearch({ onSelect, selectedId, refreshKey = 0 }) 
           setProducts(res.data.items);
           updateFromResponse(res.data);
         })
-        .catch((err) => console.error('Product fetch failed:', err))
+        .catch((err) => {
+          console.error('Product fetch failed:', err);
+          alert(err.response?.data?.detail || 'Failed to load products');
+        })
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);

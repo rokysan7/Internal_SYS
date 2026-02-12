@@ -33,6 +33,7 @@ class CaseStatus(str, enum.Enum):
     OPEN = "OPEN"
     IN_PROGRESS = "IN_PROGRESS"
     DONE = "DONE"
+    CANCEL = "CANCEL"
 
 
 class Priority(str, enum.Enum):
@@ -153,8 +154,12 @@ class CSCase(Base):
     status = Column(SQLEnum(CaseStatus), default=CaseStatus.OPEN, nullable=False)
     priority = Column(SQLEnum(Priority), default=Priority.MEDIUM, nullable=False)
     tags = Column(ARRAY(String), default=[])
+    organization = Column(String, nullable=True)
+    org_phone = Column(String, nullable=True)
+    org_contact = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+    canceled_at = Column(DateTime, nullable=True)
 
     assignee = relationship("User", back_populates="assigned_cases")
     assignees = relationship("User", secondary=case_assignees, backref="multi_assigned_cases")
@@ -195,10 +200,16 @@ class Checklist(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cs_cases.id"), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     content = Column(String, nullable=False)
     is_done = Column(Boolean, default=False)
 
     case = relationship("CSCase", back_populates="checklists")
+    author = relationship("User")
+
+    @property
+    def author_name(self):
+        return self.author.name if self.author else None
 
 
 class Notification(Base):

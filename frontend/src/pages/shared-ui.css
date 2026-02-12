@@ -57,6 +57,7 @@
 .badge-open { background: #dbeafe; color: #1d4ed8; }
 .badge-in-progress { background: #fef3c7; color: #b45309; }
 .badge-done { background: #dcfce7; color: #15803d; }
+.badge-cancel { background: #fee2e2; color: #dc2626; }
 
 .badge-high { background: #fee2e2; color: #dc2626; }
 .badge-medium { background: #fef3c7; color: #b45309; }

@@ -2,7 +2,7 @@
 CS Case CRUD 라우터.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from math import ceil
 from typing import List, Optional, Union
 
@@ -15,7 +15,7 @@ from models import CaseStatus, CSCase, User, UserRole
 from routers.auth import get_current_user
 from schemas import (
     CaseCreate, CaseRead, CaseListResponse, CaseStatusUpdate, CaseSimilarRead, CaseUpdate,
-    StatByAssignee, StatByStatus, StatByTime,
+    MyProgress, StatByAssignee, StatByStatus, StatByTime,
 )
 from services.statistics import stat_by_assignee, stat_by_status, stat_by_time
 from tasks import compute_case_similarity, learn_tags_from_case, notify_case_assigned
@@ -35,67 +35,22 @@ def get_similar_cases(
     if len(title.strip()) < 3 and not content.strip():
         return []
 
-    import numpy as np
-
-    from services.similarity import (
-        SIMILARITY_THRESHOLD,
-        CaseSimilarityEngine,
-        compute_tag_similarity,
-        load_model_from_redis,
-        save_model_to_redis,
-    )
+    from services.similarity import find_similar_cases as find_similar
 
     all_cases = db.query(CSCase).all()
-    if not all_cases:
-        return []
-
-    engine = load_model_from_redis()
-    if engine is None or not engine._fitted:
-        if len(all_cases) > 1000:
-            return []
-        engine = CaseSimilarityEngine()
-        engine.fit(
-            [c.title for c in all_cases],
-            [c.content or "" for c in all_cases],
+    matches = find_similar(title, content, tags or [], all_cases)
+    return [
+        CaseSimilarRead(
+            id=m["case"].id,
+            title=m["case"].title,
+            status=m["case"].status,
+            similarity_score=m["score"],
+            matched_tags=m["matched_tags"],
+            comment_count=len(m["case"].comments) if m["case"].comments else 0,
+            resolved_at=m["case"].completed_at,
         )
-        save_model_to_redis(engine)
-
-    # Batch transform (sparse matrices)
-    target_title_vec = engine.get_title_vector(title)
-    target_content_vec = engine.get_content_vector(content)
-    all_title_vecs = engine.batch_title_vectors([c.title for c in all_cases])
-    all_content_vecs = engine.batch_content_vectors([c.content or "" for c in all_cases])
-
-    title_sims = engine.batch_similarities(target_title_vec, all_title_vecs)
-    content_sims = engine.batch_similarities(target_content_vec, all_content_vecs)
-
-    input_tags = tags or []
-    combined_scores = np.zeros(len(all_cases))
-    for i, case in enumerate(all_cases):
-        tag_sim = compute_tag_similarity(input_tags, case.tags or [])
-        combined_scores[i] = tag_sim * 0.5 + title_sims[i] * 0.3 + content_sims[i] * 0.2
-
-    # Top 5 via argsort, apply threshold
-    top_indices = np.argsort(combined_scores)[::-1][:5]
-
-    results = []
-    for i in top_indices:
-        score = float(combined_scores[i])
-        if score < SIMILARITY_THRESHOLD:
-            continue
-        c = all_cases[i]
-        matched = list(set(t.lower() for t in input_tags) & set(t.lower() for t in (c.tags or [])))
-        comment_count = len(c.comments) if c.comments else 0
-        results.append(CaseSimilarRead(
-            id=c.id,
-            title=c.title,
-            status=c.status,
-            similarity_score=round(score, 4),
-            matched_tags=matched,
-            comment_count=comment_count,
-            resolved_at=c.completed_at,
-        ))
-    return results
+        for m in matches
+    ]
 
 
 @router.get("/", response_model=CaseListResponse)
@@ -107,10 +62,19 @@ def list_cases(
     product_id: Optional[int] = None,
     requester: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    """List cases with pagination and optional filters (status, assignee, product, requester)."""
+    """List cases with pagination and optional filters (status, assignee, product, requester).
+    Non-admin users only see cases they created or are assigned to."""
     q = db.query(CSCase).options(joinedload(CSCase.assignee), joinedload(CSCase.assignees))
+
+    # Non-admin: only own cases (created or assigned)
+    if current_user.role != UserRole.ADMIN:
+        q = q.filter(
+            (CSCase.requester == current_user.name)
+            | (CSCase.assignees.any(User.id == current_user.id))
+        )
+
     if status:
         q = q.filter(CSCase.status == status)
     if assignee_id:
@@ -180,18 +144,59 @@ def create_case(
 @router.get("/statistics", response_model=Union[List[StatByAssignee], List[StatByStatus], StatByTime])
 def get_statistics(
     by: str = Query(..., description="assignee | status | time"),
+    period: Optional[str] = Query(None, description="daily | weekly | monthly"),
+    target_date: Optional[date] = Query(None, description="Target date (YYYY-MM-DD)"),
+    assignee_id: Optional[int] = Query(None, description="Filter by assignee"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """통계 조회 (by: assignee, status, time)"""
+    """통계 조회 (by: assignee, status, time). Optional period/assignee filter."""
     if by == "assignee":
-        return stat_by_assignee(db)
+        return stat_by_assignee(db, period=period, target_date=target_date)
     elif by == "status":
-        return stat_by_status(db)
+        return stat_by_status(db, period=period, target_date=target_date, assignee_id=assignee_id)
     elif by == "time":
         return stat_by_time(db)
     else:
         raise HTTPException(status_code=400, detail="'by' parameter must be one of: assignee, status, time")
+
+
+@router.get("/my-progress", response_model=MyProgress)
+def get_my_progress(
+    target_date: Optional[date] = Query(None, description="Target date (YYYY-MM-DD), defaults to today"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get current user's case counts by status (created or assigned). No date = all-time."""
+    from sqlalchemy import case as sa_case, func
+
+    from services.statistics import _compute_date_range
+
+    q = db.query(
+        func.sum(sa_case((CSCase.status == CaseStatus.OPEN, 1), else_=0)).label("open_count"),
+        func.sum(sa_case((CSCase.status == CaseStatus.IN_PROGRESS, 1), else_=0)).label("in_progress_count"),
+        func.sum(sa_case((CSCase.status == CaseStatus.DONE, 1), else_=0)).label("done_count"),
+        func.sum(sa_case((CSCase.status == CaseStatus.CANCEL, 1), else_=0)).label("cancel_count"),
+    ).filter(
+        or_(
+            CSCase.requester == current_user.name,
+            CSCase.assignees.any(User.id == current_user.id),
+        )
+    )
+
+    if target_date:
+        start, end = _compute_date_range("daily", target_date)
+        if start and end:
+            q = q.filter(CSCase.created_at >= start, CSCase.created_at <= end)
+
+    row = q.one()
+
+    return MyProgress(
+        open_count=row.open_count or 0,
+        in_progress_count=row.in_progress_count or 0,
+        done_count=row.done_count or 0,
+        cancel_count=row.cancel_count or 0,
+    )
 
 
 @router.get("/{case_id}", response_model=CaseRead)
@@ -220,99 +225,45 @@ def get_case_similar(
 ):
     """Get similar cases for an existing case. Uses Redis cache, falls back to real-time computation."""
     from services.cache import get_cached_similar_cases
-    from services.similarity import (
-        SIMILARITY_THRESHOLD,
-        CaseSimilarityEngine,
-        compute_tag_similarity,
-        load_model_from_redis,
-        save_model_to_redis,
-    )
+    from services.similarity import MAX_SIMILAR_RESULTS, compute_tag_similarity, find_similar_cases as find_similar
 
     case = db.query(CSCase).filter(CSCase.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
+    target_tags = case.tags or []
+
+    def _build_result(c, score, matched):
+        return CaseSimilarRead(
+            id=c.id, title=c.title, status=c.status,
+            similarity_score=round(score, 4), matched_tags=matched,
+            comment_count=len(c.comments) if c.comments else 0,
+            resolved_at=c.completed_at,
+        )
+
     # Try Redis cache first
     cached = get_cached_similar_cases(case_id)
     if cached:
-        case_ids = [item["case_id"] for item in cached[:5]]
-        score_map = {item["case_id"]: item["score"] for item in cached[:5]}
+        items = cached[:MAX_SIMILAR_RESULTS]
+        case_ids = [item["case_id"] for item in items]
+        score_map = {item["case_id"]: item["score"] for item in items}
         cases = db.query(CSCase).filter(CSCase.id.in_(case_ids)).all()
         case_map = {c.id: c for c in cases}
 
         results = []
+        tag_set = set(t.lower() for t in target_tags)
         for cid in case_ids:
             c = case_map.get(cid)
             if not c:
                 continue
-            matched = list(set(t.lower() for t in (case.tags or [])) & set(t.lower() for t in (c.tags or [])))
-            comment_count = len(c.comments) if c.comments else 0
-            results.append(CaseSimilarRead(
-                id=c.id,
-                title=c.title,
-                status=c.status,
-                similarity_score=round(score_map[cid], 4),
-                matched_tags=matched,
-                comment_count=comment_count,
-                resolved_at=c.completed_at,
-            ))
+            matched = list(tag_set & set(t.lower() for t in (c.tags or [])))
+            results.append(_build_result(c, score_map[cid], matched))
         return results
 
-    # Fallback: real-time batch computation
-    import numpy as np
-
+    # Fallback: real-time computation
     all_cases = db.query(CSCase).filter(CSCase.id != case_id).all()
-    if not all_cases:
-        return []
-
-    engine = load_model_from_redis()
-    if engine is None or not engine._fitted:
-        if len(all_cases) > 1000:
-            return []
-        corpus = [case] + all_cases
-        engine = CaseSimilarityEngine()
-        engine.fit(
-            [c.title for c in corpus],
-            [c.content or "" for c in corpus],
-        )
-        save_model_to_redis(engine)
-
-    # Batch transform (sparse matrices)
-    target_title_vec = engine.get_title_vector(case.title)
-    target_content_vec = engine.get_content_vector(case.content or "")
-    all_title_vecs = engine.batch_title_vectors([c.title for c in all_cases])
-    all_content_vecs = engine.batch_content_vectors([c.content or "" for c in all_cases])
-
-    title_sims = engine.batch_similarities(target_title_vec, all_title_vecs)
-    content_sims = engine.batch_similarities(target_content_vec, all_content_vecs)
-
-    target_tags = case.tags or []
-    combined_scores = np.zeros(len(all_cases))
-    for i, other in enumerate(all_cases):
-        tag_sim = compute_tag_similarity(target_tags, other.tags or [])
-        combined_scores[i] = tag_sim * 0.5 + title_sims[i] * 0.3 + content_sims[i] * 0.2
-
-    # Top 5 via argsort, apply threshold
-    top_indices = np.argsort(combined_scores)[::-1][:5]
-
-    results = []
-    for i in top_indices:
-        score = float(combined_scores[i])
-        if score < SIMILARITY_THRESHOLD:
-            continue
-        c = all_cases[i]
-        matched = list(set(t.lower() for t in target_tags) & set(t.lower() for t in (c.tags or [])))
-        comment_count = len(c.comments) if c.comments else 0
-        results.append(CaseSimilarRead(
-            id=c.id,
-            title=c.title,
-            status=c.status,
-            similarity_score=round(score, 4),
-            matched_tags=matched,
-            comment_count=comment_count,
-            resolved_at=c.completed_at,
-        ))
-    return results
+    matches = find_similar(case.title, case.content or "", target_tags, all_cases)
+    return [_build_result(m["case"], m["score"], m["matched_tags"]) for m in matches]
 
 
 @router.put("/{case_id}", response_model=CaseRead)
@@ -393,6 +344,8 @@ def update_case_status(
     case.status = data.status
     if data.status == CaseStatus.DONE:
         case.completed_at = datetime.utcnow()
+    elif data.status == CaseStatus.CANCEL:
+        case.canceled_at = datetime.utcnow()
     db.commit()
     db.refresh(case)
     return case

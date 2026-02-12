@@ -31,7 +31,12 @@ export default function ChecklistCard({ checklists, value, onChange, onAdd, onTo
             checked={item.is_done}
             onChange={() => onToggle(item)}
           />
-          {item.content}
+          <span style={{ flex: 1 }}>{item.content}</span>
+          {item.author_name && (
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+              {item.author_name}
+            </span>
+          )}
         </label>
       ))}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -40,7 +45,7 @@ export default function ChecklistCard({ checklists, value, onChange, onAdd, onTo
           placeholder="Add checklist item..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onAdd()}
+          onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && onAdd()}
           style={{
             flex: 1, padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1',
             borderRadius: 4, fontSize: '0.82rem', fontFamily: 'inherit',

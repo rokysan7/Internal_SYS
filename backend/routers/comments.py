@@ -16,23 +16,6 @@ from tasks import notify_comment, notify_reply
 router = APIRouter(prefix="/cases/{case_id}/comments", tags=["Comments"])
 
 
-def build_comment_tree(comments: List[Comment]) -> List[Comment]:
-    """Build nested comment tree from flat list."""
-    comment_map = {c.id: c for c in comments}
-    roots = []
-
-    for comment in comments:
-        if comment.parent_id is None:
-            roots.append(comment)
-        else:
-            parent = comment_map.get(comment.parent_id)
-            if parent:
-                if not hasattr(parent, '_replies'):
-                    parent._replies = []
-                parent._replies.append(comment)
-
-    return roots
-
 
 @router.get("/", response_model=List[CommentRead])
 def list_comments(case_id: int, db: Session = Depends(get_db)):
@@ -41,10 +24,9 @@ def list_comments(case_id: int, db: Session = Depends(get_db)):
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # Load all comments with author info, then build tree
     comments = (
         db.query(Comment)
-        .options(joinedload(Comment.author))
+        .options(joinedload(Comment.author), joinedload(Comment.replies).joinedload(Comment.author))
         .filter(Comment.case_id == case_id, Comment.parent_id.is_(None))
         .order_by(Comment.created_at.asc())
         .all()

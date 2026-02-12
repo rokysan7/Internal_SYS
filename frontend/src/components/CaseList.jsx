@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDate, statusBadgeClass, statusLabel, priorityBadgeClass } from './utils';
 
@@ -6,7 +7,7 @@ import { formatDate, statusBadgeClass, statusLabel, priorityBadgeClass } from '.
  * @param {Object[]} cases - 케이스 배열
  * @param {boolean}  [clickable=true] - 행 클릭 시 상세 이동 여부
  */
-export default function CaseList({ cases, clickable = true }) {
+export default memo(function CaseList({ cases, clickable = true }) {
   const navigate = useNavigate();
 
   if (!cases || cases.length === 0) {
@@ -57,4 +58,4 @@ export default function CaseList({ cases, clickable = true }) {
       </table>
     </div>
   );
-}
+});

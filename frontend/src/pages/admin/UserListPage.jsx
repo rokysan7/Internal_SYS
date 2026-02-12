@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUsers, deleteUser } from '../../api/admin';
 import { ROLE_LIST } from '../../constants/roles';
 import Spinner from '../../components/Spinner';
+import { formatDateShort } from '../../components/utils';
 import './AdminPages.css';
 
 export default function UserListPage() {
@@ -24,6 +25,7 @@ export default function UserListPage() {
       setTotalPages(res.data.total_pages);
     } catch (err) {
       console.error('Failed to fetch users:', err);
+      alert(err.response?.data?.detail || 'Failed to load users');
     } finally {
       setIsLoading(false);
     }
@@ -47,11 +49,6 @@ export default function UserListPage() {
     } catch (err) {
       alert('Failed to deactivate user');
     }
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('ko-KR');
   };
 
   return (
@@ -112,8 +109,8 @@ export default function UserListPage() {
                           {user.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td>{formatDate(user.created_at)}</td>
-                      <td>{formatDate(user.last_login)}</td>
+                      <td>{formatDateShort(user.created_at)}</td>
+                      <td>{formatDateShort(user.last_login)}</td>
                       <td className="actions">
                         <button className="btn btn-sm" onClick={() => navigate(`/admin/users/${user.id}`)}>
                           Edit

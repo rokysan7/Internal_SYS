@@ -66,7 +66,7 @@ function CommentItem({ comment, depth = 0, onReply, onDelete, currentUser }) {
               placeholder="Write a reply..."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+              onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleReply()}
               style={{
                 flex: 1, padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1',
                 borderRadius: 4, fontSize: '0.8rem', fontFamily: 'inherit',
@@ -147,7 +147,7 @@ export default function CommentsCard({ comments, value, onChange, onAdd, onDelet
           placeholder="Add a comment..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+          onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddComment()}
           style={{
             flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1',
             borderRadius: 6, fontSize: '0.85rem', fontFamily: 'inherit',

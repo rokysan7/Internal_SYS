@@ -58,9 +58,13 @@ export const createChecklist = (caseId, data) =>
 export const updateChecklist = (checklistId, is_done) =>
   client.patch(`/checklists/${checklistId}`, { is_done });
 
-/** 통계 조회 (by: assignee | status | time) */
-export const getStatistics = (by) =>
-  client.get('/cases/statistics', { params: { by } });
+/** 통계 조회 (by: assignee | status | time, optional period, date, assignee) */
+export const getStatistics = (by, { period, targetDate, assigneeId } = {}) =>
+  client.get('/cases/statistics', { params: { by, period: period || undefined, target_date: targetDate || undefined, assignee_id: assigneeId || undefined } });
+
+/** 현재 사용자의 상태별 케이스 수 조회 (날짜별) */
+export const getMyProgress = (targetDate) =>
+  client.get('/cases/my-progress', { params: { target_date: targetDate || undefined } });
 
 /** 담당자로 배정 가능한 사용자 목록 */
 export const getAssignees = () =>

@@ -21,6 +21,7 @@ export default function ProductCreateForm({ onCreated, onCancel }) {
       onCreated();
     } catch (err) {
       console.error('Product creation failed:', err);
+      alert(err.response?.data?.detail || 'Failed to create product');
     } finally {
       setSubmitting(false);
     }

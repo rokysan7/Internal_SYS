@@ -41,6 +41,7 @@ export default memo(function MemoList({
       setNewMemo('');
     } catch (err) {
       console.error('Memo creation failed:', err);
+      alert(err.response?.data?.detail || 'Failed to create memo');
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +113,7 @@ export default memo(function MemoList({
           placeholder="Add a memo..."
           value={newMemo}
           onChange={(e) => setNewMemo(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAdd()}
           style={{
             flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1',
             borderRadius: 6, fontSize: '0.85rem', fontFamily: 'inherit',
