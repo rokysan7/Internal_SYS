@@ -15,7 +15,7 @@ const httpsConfig =
 const apiPaths = [
   '/auth', '/admin', '/products', '/licenses', '/memos',
   '/cases', '/comments', '/checklists', '/notifications', '/push',
-  '/product-memos', '/license-memos', '/tags',
+  '/product-memos', '/license-memos', '/tags', '/quote-requests',
 ];
 
 // Proxy 설정:

@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr
 
-from models import CaseStatus, NotificationType, Priority, UserRole
+from models import CaseStatus, NotificationType, Priority, QuoteRequestStatus, UserRole
 
 
 # ======================== User ========================
@@ -27,6 +27,7 @@ class UserRead(UserBase):
     id: int
     role: UserRole
     is_active: bool = True
+    is_quote_assignee: bool = False
     created_at: datetime
     last_login: Optional[datetime] = None
 
@@ -38,6 +39,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    is_quote_assignee: Optional[bool] = None
 
 
 class UserListResponse(BaseModel):
@@ -303,6 +305,7 @@ class NotificationRead(BaseModel):
     id: int
     user_id: int
     case_id: Optional[int] = None
+    quote_request_id: Optional[int] = None
     message: str
     is_read: bool
     type: NotificationType
@@ -394,3 +397,81 @@ class TagSuggestResult(BaseModel):
     name: str
     score: float
     usage_count: int
+
+
+# ======================== Quote Request ========================
+
+
+class QuoteRequestCollect(BaseModel):
+    """Incoming data from external system."""
+    date_time: str
+    delivery_date: Optional[str] = None
+    email_id: Optional[str] = None
+    email: Optional[str] = None
+    organization: Optional[str] = None
+    quote_request: str
+    other_request: Optional[str] = None
+    failed_products: Optional[List[dict]] = None
+    additional_request: Optional[str] = None
+
+
+class QuoteRequestAssigneeUpdate(BaseModel):
+    """Assignee update (ADMIN only)."""
+    assignee_ids: List[int]
+
+
+class QuoteRequestStatusUpdate(BaseModel):
+    """Status update."""
+    status: QuoteRequestStatus
+
+
+class QuoteRequestRead(BaseModel):
+    id: int
+    received_at: datetime
+    delivery_date: Optional[str] = None
+    email_id: Optional[str] = None
+    email: Optional[str] = None
+    organization: Optional[str] = None
+    quote_request: str
+    other_request: Optional[str] = None
+    failed_products: Optional[List[dict]] = None
+    additional_request: Optional[str] = None
+    status: QuoteRequestStatus
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    assignee_ids: List[int] = []
+    assignee_names: List[str] = []
+    comment_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class QuoteRequestListResponse(BaseModel):
+    items: List[QuoteRequestRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class QuoteRequestCommentCreate(BaseModel):
+    content: str
+    parent_id: Optional[int] = None
+
+
+class QuoteRequestCommentAuthor(BaseModel):
+    id: int
+    name: str
+    model_config = {"from_attributes": True}
+
+
+class QuoteRequestCommentRead(BaseModel):
+    id: int
+    quote_request_id: int
+    author_id: int
+    parent_id: Optional[int] = None
+    content: str
+    author: Optional[QuoteRequestCommentAuthor] = None
+    replies: List["QuoteRequestCommentRead"] = []
+    created_at: datetime
+    model_config = {"from_attributes": True}

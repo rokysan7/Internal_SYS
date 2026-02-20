@@ -6,6 +6,8 @@ import CaseDetail from '../components/CaseDetail';
 import CaseForm from '../components/CaseForm';
 import Pagination from '../components/Pagination';
 import Spinner from '../components/Spinner';
+import { CASE_STATUS_LIST, CASE_STATUS_LABEL } from '../constants/caseStatus';
+import { PRIORITY_LIST } from '../constants/priority';
 import './shared.css';
 import './CasePage.css';
 
@@ -101,16 +103,15 @@ function CaseListView() {
         />
         <select value={statusFilter} onChange={handleStatusChange}>
           <option value="">All Status</option>
-          <option value="OPEN">Open</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="DONE">Done</option>
-          <option value="CANCEL">Cancel</option>
+          {CASE_STATUS_LIST.map((s) => (
+            <option key={s} value={s}>{CASE_STATUS_LABEL[s]}</option>
+          ))}
         </select>
         <select value={priorityFilter} onChange={handlePriorityChange}>
           <option value="">All Priority</option>
-          <option value="HIGH">High</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="LOW">Low</option>
+          {PRIORITY_LIST.map((p) => (
+            <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>
+          ))}
         </select>
       </div>
 

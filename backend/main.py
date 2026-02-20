@@ -5,7 +5,7 @@ FastAPI 앱 엔트리포인트.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import admin, auth, cases, checklists, comments, licenses, memos, notifications, products, push, tags
+from routers import admin, auth, cases, checklists, comments, licenses, memos, notifications, products, push, quote_requests, tags
 
 app = FastAPI(title="CS Dashboard API", version="1.0.4")
 
@@ -33,6 +33,7 @@ app.include_router(checklists.router)
 app.include_router(notifications.router)
 app.include_router(push.router)
 app.include_router(tags.router)
+app.include_router(quote_requests.router)
 
 
 @app.get("/")

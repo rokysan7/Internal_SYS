@@ -1,5 +1,6 @@
 /* ===== CasePage Specific Styles ===== */
 @import './similar-cases.css';
+@import './tag-input.css';
 
 /* Multi-select assignee */
 .multi-select-wrap .selected-tags {

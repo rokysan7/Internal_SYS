@@ -25,6 +25,7 @@ def list_products(
     sort: str = Query("name", description="정렬 기준: name, created_at"),
     order: str = Query("asc", description="정렬 순서: asc, desc"),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     """List products with pagination, search, and sorting."""
     query = db.query(Product)
@@ -172,13 +173,13 @@ async def bulk_upload_products(
 
 
 @router.get("/all", response_model=List[ProductRead])
-def list_all_products(db: Session = Depends(get_db)):
+def list_all_products(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Get all products without pagination (for dropdowns)."""
     return db.query(Product).order_by(Product.name).all()
 
 
 @router.get("/{product_id}", response_model=ProductRead)
-def get_product(product_id: int, db: Session = Depends(get_db)):
+def get_product(product_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Get a single product by ID."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -208,7 +209,7 @@ def update_product(
 
 
 @router.get("/{product_id}/licenses", response_model=List[LicenseRead])
-def get_product_licenses(product_id: int, db: Session = Depends(get_db)):
+def get_product_licenses(product_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """List all licenses belonging to a product."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:

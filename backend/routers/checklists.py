@@ -19,7 +19,7 @@ router = APIRouter(tags=["Checklists"])
     "/cases/{case_id}/checklists",
     response_model=List[ChecklistRead],
 )
-def list_checklists(case_id: int, db: Session = Depends(get_db)):
+def list_checklists(case_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """List all checklist items for a case."""
     case = db.query(CSCase).filter(CSCase.id == case_id).first()
     if not case:
@@ -59,6 +59,7 @@ def update_checklist(
     checklist_id: int,
     data: ChecklistUpdate,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     """Toggle checklist item completion status."""
     checklist = (

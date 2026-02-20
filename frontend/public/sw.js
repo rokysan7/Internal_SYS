@@ -10,13 +10,13 @@ self.addEventListener('push', (event) => {
     payload = { title: 'CS Dashboard', body: event.data.text() };
   }
 
-  const { title = 'CS Dashboard', body = '', case_id } = payload;
+  const { title = 'CS Dashboard', body = '', case_id, quote_request_id } = payload;
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon: '/favicon.ico',
-      data: { case_id },
+      data: { case_id, quote_request_id },
     }).catch((err) => {
       console.error('[SW] showNotification failed:', err);
     })
@@ -26,8 +26,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const caseId = event.notification.data?.case_id;
-  const targetUrl = caseId ? `/cases/${caseId}` : '/';
+  const { case_id: caseId, quote_request_id: qrId } = event.notification.data || {};
+  const targetUrl = caseId ? `/cases/${caseId}` : qrId ? `/quote-requests/${qrId}` : '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

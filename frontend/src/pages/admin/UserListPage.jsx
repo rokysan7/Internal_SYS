@@ -101,7 +101,12 @@ export default function UserListPage() {
                 ) : (
                   users.map((user) => (
                     <tr key={user.id} className={!user.is_active ? 'inactive' : ''}>
-                      <td>{user.name}</td>
+                      <td>
+                        {user.name}
+                        {user.is_quote_assignee && (
+                          <span className="status-badge active" style={{ marginLeft: 6, fontSize: '0.7rem' }}>QR</span>
+                        )}
+                      </td>
                       <td>{user.email}</td>
                       <td><span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span></td>
                       <td>

@@ -19,7 +19,8 @@ VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "")
 
 
 def send_push_to_user(
-    db: Session, user_id: int, title: str, body: str, case_id: int | None = None
+    db: Session, user_id: int, title: str, body: str,
+    case_id: int | None = None, quote_request_id: int | None = None,
 ) -> int:
     """해당 user의 모든 PushSubscription에 Web Push를 전송한다.
 
@@ -38,7 +39,12 @@ def send_push_to_user(
     if not subscriptions:
         return 0
 
-    payload = json.dumps({"title": title, "body": body, "case_id": case_id})
+    data = {"title": title, "body": body}
+    if case_id:
+        data["case_id"] = case_id
+    if quote_request_id:
+        data["quote_request_id"] = quote_request_id
+    payload = json.dumps(data)
     sent = 0
     expired_ids = []
 

@@ -18,7 +18,7 @@ function showOSNotification(notification) {
     body: notification.message,
     icon: '/favicon.ico',
     tag: `notif-${notification.id}`,
-    data: { case_id: notification.case_id },
+    data: { case_id: notification.case_id, quote_request_id: notification.quote_request_id },
   };
 
   if (navigator.serviceWorker?.controller) {
@@ -135,6 +135,9 @@ export default function Layout() {
     if (notification.case_id) {
       setPanelOpen(false);
       navigate(`/cases/${notification.case_id}`);
+    } else if (notification.quote_request_id) {
+      setPanelOpen(false);
+      navigate(`/quote-requests/${notification.quote_request_id}`);
     }
   };
 
@@ -167,6 +170,10 @@ export default function Layout() {
           <NavLink to="/products">
             <span className="nav-icon">📦</span>
             Products
+          </NavLink>
+          <NavLink to="/quote-requests">
+            <span className="nav-icon">📝</span>
+            Quote Requests
           </NavLink>
           {user?.role === ROLES.ADMIN && (
             <>
@@ -205,6 +212,8 @@ export default function Layout() {
               <button
                 className="notification-btn"
                 title="알림"
+                aria-label="알림 패널 열기"
+                aria-expanded={panelOpen}
                 onClick={() => setPanelOpen((prev) => !prev)}
               >
                 🔔
@@ -269,7 +278,7 @@ export default function Layout() {
               <span className="user-name">{user?.name || 'User'}</span>
               <span className="user-role">{user?.role || ''}</span>
             </div>
-            <button className="logout-btn" onClick={logout} title="Logout">
+            <button className="logout-btn" onClick={logout} title="Logout" aria-label="로그아웃">
               🚪
             </button>
           </div>

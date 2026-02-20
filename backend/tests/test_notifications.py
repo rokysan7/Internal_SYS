@@ -5,7 +5,7 @@ from models import Notification, NotificationType
 
 def test_list_notifications(client, sample_case, assignee_user):
     """sample_case 생성 시 ASSIGNEE 알림이 자동 생성됨."""
-    resp = client.get("/notifications/")
+    resp = client.get("/notifications/", params={"user_id": assignee_user.id})
     assert resp.status_code == 200
     assert len(resp.json()) >= 1
 
@@ -29,7 +29,7 @@ def test_list_notifications_unread_only(client, sample_case, assignee_user):
 
 
 def test_mark_as_read(client, sample_case, assignee_user):
-    notifs = client.get("/notifications/").json()
+    notifs = client.get("/notifications/", params={"user_id": assignee_user.id}).json()
     assert len(notifs) > 0
     nid = notifs[0]["id"]
 

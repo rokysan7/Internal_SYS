@@ -13,6 +13,7 @@ const ProductPage = lazy(() => import('./pages/ProductPage'));
 const UserListPage = lazy(() => import('./pages/admin/UserListPage'));
 const UserCreatePage = lazy(() => import('./pages/admin/UserCreatePage'));
 const UserEditPage = lazy(() => import('./pages/admin/UserEditPage'));
+const QuoteRequestPage = lazy(() => import('./pages/QuoteRequestPage'));
 
 export default function App() {
   return (
@@ -34,6 +35,8 @@ export default function App() {
           <Route path="cases/new" element={<CasePage />} />
           <Route path="cases/:id" element={<CasePage />} />
           <Route path="products" element={<ProductPage />} />
+          <Route path="quote-requests" element={<QuoteRequestPage />} />
+          <Route path="quote-requests/:id" element={<QuoteRequestPage />} />
 
           {/* Admin routes */}
           <Route path="admin/users" element={<AdminRoute><UserListPage /></AdminRoute>} />

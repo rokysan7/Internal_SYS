@@ -42,6 +42,11 @@ class Priority(str, enum.Enum):
     LOW = "LOW"
 
 
+class QuoteRequestStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    DONE = "DONE"
+
+
 class NotificationType(str, enum.Enum):
     ASSIGNEE = "ASSIGNEE"
     REMINDER = "REMINDER"
@@ -59,6 +64,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.CS, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_quote_assignee = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
 
@@ -218,6 +224,7 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     case_id = Column(Integer, ForeignKey("cs_cases.id"), nullable=True)
+    quote_request_id = Column(Integer, ForeignKey("quote_requests.id"), nullable=True)
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
     type = Column(SQLEnum(NotificationType), nullable=False)
@@ -225,6 +232,7 @@ class Notification(Base):
 
     user = relationship("User", back_populates="notifications")
     case = relationship("CSCase", back_populates="notifications")
+    quote_request = relationship("QuoteRequest")
 
 
 class PushSubscription(Base):
@@ -253,3 +261,60 @@ class TagMaster(Base):
     keyword_weights = Column(JSONB, default={})
     created_by = Column(String, default="user")  # "user" | "system" | "seed"
     created_at = Column(DateTime, default=func.now())
+
+
+# ---------- Quote Request ----------
+
+quote_request_assignees = Table(
+    "quote_request_assignees",
+    Base.metadata,
+    Column("quote_request_id", Integer, ForeignKey("quote_requests.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class QuoteRequest(Base):
+    __tablename__ = "quote_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Incoming data fields
+    received_at = Column(DateTime, nullable=False)
+    delivery_date = Column(String, nullable=True)
+    email_id = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    organization = Column(String, nullable=True)
+    quote_request = Column(Text, nullable=False)
+    other_request = Column(Text, nullable=True)
+    failed_products = Column(JSONB, nullable=True)
+    additional_request = Column(Text, nullable=True)
+    # System fields
+    status = Column(SQLEnum(QuoteRequestStatus), default=QuoteRequestStatus.OPEN, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    # Relationships
+    assignees = relationship("User", secondary=quote_request_assignees)
+    comments = relationship("QuoteRequestComment", back_populates="quote_request", cascade="all, delete-orphan")
+
+    @property
+    def assignee_ids(self):
+        return [u.id for u in self.assignees] if self.assignees else []
+
+    @property
+    def assignee_names(self):
+        return [u.name for u in self.assignees] if self.assignees else []
+
+
+class QuoteRequestComment(Base):
+    __tablename__ = "quote_request_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quote_request_id = Column(Integer, ForeignKey("quote_requests.id"), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("quote_request_comments.id"), nullable=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    quote_request = relationship("QuoteRequest", back_populates="comments")
+    author = relationship("User")
+    parent = relationship("QuoteRequestComment", remote_side=[id], back_populates="replies")
+    replies = relationship("QuoteRequestComment", back_populates="parent", cascade="all, delete-orphan")

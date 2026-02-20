@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from celery_app import celery
 from database import SessionLocal
-from models import CaseStatus, CSCase, Notification, NotificationType
+from models import CaseStatus, CSCase, Notification, NotificationType, QuoteRequest
 from services.push import send_push_to_user
 from services.tag_service import learn_from_case
 
@@ -24,13 +24,14 @@ logger = logging.getLogger(__name__)
 PUSH_TITLE = "CS Dashboard"
 
 
-def _create_and_push(db, user_ids, case_id, message, notif_type):
+def _create_and_push(db, user_ids, message, notif_type, case_id=None, quote_request_id=None):
     """Create notifications for user_ids and send push. Returns list of notified user ids."""
     notified = []
     for uid in user_ids:
         notif = Notification(
             user_id=uid,
             case_id=case_id,
+            quote_request_id=quote_request_id,
             message=message,
             type=notif_type,
         )
@@ -38,7 +39,7 @@ def _create_and_push(db, user_ids, case_id, message, notif_type):
         notified.append(uid)
     db.commit()
     for uid in notified:
-        send_push_to_user(db, uid, PUSH_TITLE, message, case_id)
+        send_push_to_user(db, uid, PUSH_TITLE, message, case_id=case_id, quote_request_id=quote_request_id)
     return notified
 
 
@@ -114,7 +115,7 @@ def notify_comment(case_id: int, comment_author_id: int, comment_content: str):
             return {"notified": False, "reason": "author is only assignee"}
 
         msg = f"CS Case #{case.id}에 새로운 댓글: {comment_content[:50]}"
-        notified = _create_and_push(db, target_ids, case.id, msg, NotificationType.COMMENT)
+        notified = _create_and_push(db, target_ids, msg, NotificationType.COMMENT, case_id=case.id)
         return {"notified": True, "notified_user_ids": notified}
 
 
@@ -127,7 +128,7 @@ def notify_case_assigned(case_id: int, assignee_ids: list):
             return {"notified": False, "reason": "no case or no assignees"}
 
         msg = f"CS Case #{case.id} '{case.title[:50]}' 담당으로 배정되었습니다."
-        notified = _create_and_push(db, assignee_ids, case.id, msg, NotificationType.ASSIGNEE)
+        notified = _create_and_push(db, assignee_ids, msg, NotificationType.ASSIGNEE, case_id=case.id)
         return {"notified": True, "notified_user_ids": notified}
 
 
@@ -139,8 +140,39 @@ def notify_reply(case_id: int, parent_author_id: int, replier_name: str, replier
             return {"notified": False, "reason": "self-reply"}
 
         msg = f"{replier_name}님이 회원님의 댓글에 답글을 남겼습니다."
-        _create_and_push(db, [parent_author_id], case_id, msg, NotificationType.COMMENT)
+        _create_and_push(db, [parent_author_id], msg, NotificationType.COMMENT, case_id=case_id)
         return {"notified": True, "notified_user_id": parent_author_id}
+
+
+@celery.task
+def notify_quote_request_assigned(qr_id: int, assignee_ids: list):
+    """Quote Request 담당자 배정 시 알림."""
+    with db_session() as db:
+        qr = db.query(QuoteRequest).filter(QuoteRequest.id == qr_id).first()
+        if not qr or not assignee_ids:
+            return {"notified": False, "reason": "no quote request or no assignees"}
+
+        title = qr.quote_request[:50]
+        msg = f"Quote Request #{qr.id} '{title}' 담당으로 배정되었습니다."
+        notified = _create_and_push(db, assignee_ids, msg, NotificationType.ASSIGNEE, quote_request_id=qr.id)
+        return {"notified": True, "notified_user_ids": notified}
+
+
+@celery.task
+def notify_quote_request_comment(qr_id: int, comment_author_id: int, content: str):
+    """Quote Request 댓글 시 담당자 알림."""
+    with db_session() as db:
+        qr = db.query(QuoteRequest).filter(QuoteRequest.id == qr_id).first()
+        if not qr or not qr.assignees:
+            return {"notified": False, "reason": "no quote request or no assignees"}
+
+        target_ids = [a.id for a in qr.assignees if a.id != comment_author_id]
+        if not target_ids:
+            return {"notified": False, "reason": "author is only assignee"}
+
+        msg = f"Quote Request #{qr.id}에 새로운 댓글: {content[:50]}"
+        notified = _create_and_push(db, target_ids, msg, NotificationType.COMMENT, quote_request_id=qr.id)
+        return {"notified": True, "notified_user_ids": notified}
 
 
 @celery.task

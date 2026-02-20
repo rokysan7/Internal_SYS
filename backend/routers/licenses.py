@@ -14,7 +14,7 @@ router = APIRouter(prefix="/licenses", tags=["Licenses"])
 
 
 @router.post("/", response_model=LicenseRead, status_code=201)
-def create_license(data: LicenseCreate, db: Session = Depends(get_db)):
+def create_license(data: LicenseCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Create a new license under a product."""
     product = db.query(Product).filter(Product.id == data.product_id).first()
     if not product:
@@ -27,7 +27,7 @@ def create_license(data: LicenseCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{license_id}", response_model=LicenseRead)
-def get_license(license_id: int, db: Session = Depends(get_db)):
+def get_license(license_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Get a single license by ID."""
     license_obj = db.query(License).filter(License.id == license_id).first()
     if not license_obj:

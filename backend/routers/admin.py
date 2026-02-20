@@ -149,6 +149,8 @@ def update_user(
         user.role = data.role
     if data.is_active is not None:
         user.is_active = data.is_active
+    if data.is_quote_assignee is not None:
+        user.is_quote_assignee = data.is_quote_assignee
 
     db.commit()
     db.refresh(user)

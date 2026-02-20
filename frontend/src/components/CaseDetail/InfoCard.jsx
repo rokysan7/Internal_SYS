@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatDate, priorityBadgeClass } from '../utils';
+import { CASE_STATUS, CASE_STATUS_LIST, CASE_STATUS_LABEL } from '../../constants/caseStatus';
 
 /**
  * Case information sidebar card.
@@ -21,10 +22,9 @@ export default function InfoCard({ caseData, onStatusChange }) {
             borderRadius: 4, fontSize: '0.85rem', fontFamily: 'inherit',
           }}
         >
-          <option value="OPEN">Open</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="DONE">Done</option>
-          <option value="CANCEL">Cancel</option>
+          {CASE_STATUS_LIST.map((s) => (
+            <option key={s} value={s}>{CASE_STATUS_LABEL[s]}</option>
+          ))}
         </select>
       </div>
       <div className="detail-field">
@@ -81,13 +81,13 @@ export default function InfoCard({ caseData, onStatusChange }) {
         <span className="detail-label">Created</span>
         <span className="detail-value">{formatDate(caseData.created_at)}</span>
       </div>
-      {caseData.status === 'DONE' && caseData.completed_at && (
+      {caseData.status === CASE_STATUS.DONE && caseData.completed_at && (
         <div className="detail-field">
           <span className="detail-label">Completed</span>
           <span className="detail-value">{formatDate(caseData.completed_at)}</span>
         </div>
       )}
-      {caseData.status === 'CANCEL' && caseData.canceled_at && (
+      {caseData.status === CASE_STATUS.CANCEL && caseData.canceled_at && (
         <div className="detail-field">
           <span className="detail-label">Canceled</span>
           <span className="detail-value">{formatDate(caseData.canceled_at)}</span>

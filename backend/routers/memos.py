@@ -24,7 +24,7 @@ router = APIRouter(tags=["Memos"])
 
 
 @router.get("/products/{product_id}/memos", response_model=List[ProductMemoRead])
-def list_product_memos(product_id: int, db: Session = Depends(get_db)):
+def list_product_memos(product_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """List all memos for a product, ordered by newest first."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -83,7 +83,7 @@ def delete_product_memo(
 
 
 @router.get("/licenses/{license_id}/memos", response_model=List[LicenseMemoRead])
-def list_license_memos(license_id: int, db: Session = Depends(get_db)):
+def list_license_memos(license_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """List all memos for a license, ordered by newest first."""
     license_obj = db.query(License).filter(License.id == license_id).first()
     if not license_obj:
